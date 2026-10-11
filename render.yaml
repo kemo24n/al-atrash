@@ -1,0 +1,30 @@
+# Render Blueprint for الأطرش أونلاين (Render web service + Supabase Postgres & Storage).
+# Render dashboard → New → Blueprint → pick this repo. Fill the secrets it asks for.
+services:
+  - type: web
+    name: attrash-online
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DATABASE_URL          # Supabase → Connect → Session pooler URI
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_SITE_URL  # e.g. https://attrash-online.onrender.com
+        sync: false
+      - key: SUPABASE_URL          # Supabase → Project Settings → API → Project URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY  # Supabase → Project Settings → API → service_role (secret)
+        sync: false
+      - key: CALLMEBOT_PHONE
+        sync: false
+      - key: CALLMEBOT_APIKEY
+        sync: false

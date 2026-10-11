@@ -21,7 +21,7 @@ It has four parts in one codebase:
 
 **Real product photos**
 - 236 products, almost all with **real photos**: packaged goods use real front photos from Open Food Facts / Open Products Facts / Open Beauty Facts (Pepsi, Pringles, Takis, Kinder, Nescafé, Najjar, La Vache qui rit, Fairy, Ariel, Aseel ghee, Aleppo soap…). Fresh produce and bulk items use Unsplash photos.
-- `npm run images:pull` downloads every photo into `storage/uploads` and points the database at the local copies, so the shop never depends on those hosts. The Docker `migrate` job runs it automatically.
+- `npm run images:pull` copies every photo into your own storage (Supabase Storage on Render, `storage/uploads` on a VPS) and points the database at the copies, so the shop never depends on those hosts. The Docker `migrate` job runs it automatically.
 
 **Branches and delivery**
 - New **branches** table and *Admin → الفروع* page (orders per branch for the last 7 days). Each delivery zone is linked to the branch that serves it.
@@ -62,9 +62,27 @@ cp .env.example .env              # set DATABASE_URL + AUTH_SECRET
 npm install
 npm run db:push                   # create tables
 npm run db:seed                   # catalogue, branches, zones + demo orders (FORCE_SEED=1 to wipe and re-seed)
-npm run images:pull               # optional: cache all product photos locally
+npm run images:pull               # optional: copy all product photos to your own storage
 npm run dev                       # http://localhost:3000
 ```
+
+## Deploy on Render + Supabase (free)
+
+1. **Supabase**: create a project (region: Frankfurt, closest to Syria/Lebanon). Save the database password.
+   - *Connect → Session pooler* → copy the URI (Render can't reach the direct `db.xxx.supabase.co` host because it's IPv6 only).
+   - *Project Settings → API* → copy the **Project URL** and the **service_role** key.
+2. **Create the tables, seed and copy the photos** (once, from your computer). Put the three values in `.env`, then:
+   ```bash
+   npm install
+   npm run db:setup:supabase      # tables + catalogue + branches + demo orders + photos → Supabase Storage
+   ```
+   The photo step creates a public `uploads` bucket and copies every product photo into it, so the shop no longer depends on Open Food Facts or Unsplash.
+3. **Render**: push the code to GitHub, then *New → Blueprint* and pick the repo (it reads `render.yaml`), or *New → Web Service* with:
+   - Build: `npm ci && npm run build` · Start: `npm run start` · Node 22 · Health check `/api/health`
+   - Env vars: `DATABASE_URL`, `AUTH_SECRET` (long random string), `NEXT_PUBLIC_SITE_URL` (your onrender.com URL), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+4. Open the site, log in at `/staff-login` with the demo admin, and change the passwords.
+
+**Free tier notes:** a free Render instance sleeps after 15 minutes without visits, so the first visit after that takes ~30–60 s. Point a free uptime pinger (e.g. UptimeRobot, every 5 minutes) at `https://YOUR-APP.onrender.com/api/health` to keep it awake. A free Supabase project pauses after a week with no activity; the pinger hits the database too, which keeps it active.
 
 ## Deploy with Docker (VPS)
 

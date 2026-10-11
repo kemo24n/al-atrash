@@ -1,11 +1,10 @@
 /* eslint-disable no-console */
-// Downloads every remote product / category / banner photo into storage/uploads and points the database at the local copy.
-// Run once on the server after seeding (it needs internet access):  npm run images:pull
+// Copies every remote product / category / banner photo into your own storage and points the database at the copy:
+// Supabase Storage when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set (Render), otherwise storage/uploads (Docker/VPS).
+// Run once after seeding (it needs internet access):  npm run images:pull
 // Safe to re-run: rows that already point at /uploads/ are skipped.
 import { readFileSync, existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import path from "node:path";
 
 if (!process.env.DATABASE_URL && existsSync(".env")) {
   for (const line of readFileSync(".env", "utf8").split("\n")) {
@@ -16,19 +15,23 @@ if (!process.env.DATABASE_URL && existsSync(".env")) {
 
 async function main() {
   const { db, schema } = await import("../src/db");
-  const { eq, like } = await import("drizzle-orm");
-  const dir = process.env.UPLOAD_DIR || path.join(process.cwd(), "storage", "uploads");
-  await mkdir(dir, { recursive: true });
+  const { eq, like, and, notLike } = await import("drizzle-orm");
+  const { storeFile, usingSupabaseStorage } = await import("../src/lib/storage");
+  console.log(usingSupabaseStorage() ? "→ target: Supabase Storage" : "→ target: storage/uploads");
+  const ownPrefix = process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/$/, "")}/storage/%` : "__none__";
+  const cache = new Map<string, string>();
 
   const fetchOne = async (url: string) => {
-    const src = url.includes("images.unsplash.com") ? `${url}${url.includes("?") ? "&" : "?"}w=900&h=900&fit=crop&auto=format&fm=jpg&q=78` : url;
-    const name = `p-${createHash("sha1").update(url).digest("hex").slice(0, 16)}.jpg`;
-    const file = path.join(dir, name);
-    if (existsSync(file)) return `/uploads/${name}`;
+    if (cache.has(url)) return cache.get(url)!;
+    const scene = url.includes("images.unsplash.com");
+    const src = scene ? `${url}${url.includes("?") ? "&" : "?"}w=900&h=900&fit=crop&auto=format&fm=jpg&q=78` : url;
+    // "scene-" keeps the full-bleed photo styling for produce/lifestyle shots after they move.
+    const name = `${scene ? "scene" : "p"}-${createHash("sha1").update(url).digest("hex").slice(0, 16)}.jpg`;
     const res = await fetch(src, { headers: { "User-Agent": "AttrashShop/1.0 (image cache)" } });
     if (!res.ok) throw new Error(`${res.status} ${src}`);
-    await writeFile(file, Buffer.from(await res.arrayBuffer()));
-    return `/uploads/${name}`;
+    const saved = await storeFile(name, Buffer.from(await res.arrayBuffer()), "image/jpeg");
+    cache.set(url, saved);
+    return saved;
   };
 
   const tables = [
@@ -38,7 +41,7 @@ async function main() {
   ] as const;
   let ok = 0, fail = 0;
   for (const { t, label } of tables) {
-    const rows = await db.select({ id: t.id, image: t.image }).from(t).where(like(t.image, "http%"));
+    const rows = await db.select({ id: t.id, image: t.image }).from(t).where(and(like(t.image, "http%"), notLike(t.image, ownPrefix)));
     console.log(`→ ${label}: ${rows.length} remote images`);
     for (const r of rows) {
       try {
@@ -51,7 +54,7 @@ async function main() {
       }
     }
   }
-  console.log(`✓ saved ${ok} images locally${fail ? `, ${fail} failed (they keep their remote URL)` : ""}`);
+  console.log(`✓ copied ${ok} images${fail ? `, ${fail} failed (they keep their remote URL)` : ""}`);
   process.exit(0);
 }
 

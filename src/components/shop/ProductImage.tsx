@@ -5,7 +5,7 @@ import { cn } from "@/lib/format";
 
 /** Packshots (Open Food Facts, uploads) sit on white, contained. Scene photos (Unsplash) fill the frame. */
 export function isScenePhoto(src?: string | null) {
-  return !!src && src.includes("images.unsplash.com");
+  return !!src && (src.includes("images.unsplash.com") || /\/scene-[\w-]+\.\w+$/.test(src));
 }
 
 export function imgUrl(src: string, size = 400) {

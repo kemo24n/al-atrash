@@ -13,5 +13,7 @@ export default {
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
-  dbCredentials: { url: process.env.DATABASE_URL! },
+  dbCredentials: /supabase\.(co|com)/.test(process.env.DATABASE_URL ?? "")
+    ? { url: process.env.DATABASE_URL!.replace(/[?&]sslmode=[^&]*/, ""), ssl: { rejectUnauthorized: false } }
+    : { url: process.env.DATABASE_URL! },
 } satisfies Config;

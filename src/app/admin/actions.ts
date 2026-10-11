@@ -1,8 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import Papa from "papaparse";
@@ -11,6 +9,7 @@ import type { OrderStatus, Role } from "@/db/schema";
 import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { setOrderStatus } from "@/lib/orders";
 import { normalizePhone, slugify } from "@/lib/format";
+import { storeFile } from "@/lib/storage";
 
 async function guard(roles: Role[] = ["ADMIN", "STAFF"]) {
   const u = await getCurrentUser();
@@ -29,17 +28,13 @@ const str = (v: FormDataEntryValue | null) => { const s = String(v ?? "").trim()
 const bool = (v: FormDataEntryValue | null) => v === "on" || v === "true" || v === "1";
 
 /* ---------------- uploads ---------------- */
-const uploadDir = () => process.env.UPLOAD_DIR || path.join(process.cwd(), "storage", "uploads");
 async function saveUpload(file: File | null) {
   if (!file || file.size === 0) return null;
   if (file.size > 5 * 1024 * 1024) throw new Error("حجم الصورة أكبر من 5MB");
   const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" } as Record<string, string>)[file.type];
   if (!ext) throw new Error("صيغة الصورة غير مدعومة (JPG/PNG/WEBP)");
   const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const dir = uploadDir();
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return `/uploads/${name}`;
+  return storeFile(name, Buffer.from(await file.arrayBuffer()), file.type);
 }
 
 /* ---------------- orders ---------------- */
