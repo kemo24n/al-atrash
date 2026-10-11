@@ -65,7 +65,7 @@ function ZoneButton({ compact }: { compact?: boolean }) {
 function LiveStrip() {
   const { settings } = useStore();
   const msgs = [
-    settings.isOpen ? "مفتوحين هلأ · 24 ساعة، 7 أيام" : "مسكّرين هلأ، منرجع بسرعة",
+    settings.isOpen ? "فاتحين هلأ · 24 ساعة، 7 أيام" : "مسكّرين هلأ، منرجع بسرعة",
     "التوصيل مجاني لكل مناطق حلب",
     "15 فرع داخل حلب",
     "الدفع كاش عند الاستلام، ليرة أو دولار",
