@@ -27,3 +27,11 @@ COPY --from=builder --chown=app:app /app/.next/static ./.next/static
 USER app
 EXPOSE 3000
 CMD ["node", "server.js"]
+
+# ---- Render (default target, single container) ----
+# Sets the database up on first boot, copies photos to Supabase Storage, then starts the shop.
+# docker-compose keeps using the "migrate" and "runner" targets above.
+FROM builder AS render
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0
+EXPOSE 10000
+CMD ["sh", "scripts/render-start.sh"]

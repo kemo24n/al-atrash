@@ -77,7 +77,8 @@ npm run dev                       # http://localhost:3000
    npm run db:setup:supabase      # tables + catalogue + branches + demo orders + photos → Supabase Storage
    ```
    The photo step creates a public `uploads` bucket and copies every product photo into it, so the shop no longer depends on Open Food Facts or Unsplash.
-3. **Render**: push the code to GitHub, then *New → Blueprint* and pick the repo (it reads `render.yaml`), or *New → Web Service* with:
+3. **Render (Docker service)**: the Dockerfile's last stage is made for Render. On first boot it creates the tables, seeds the catalogue and copies the photos to Supabase Storage by itself (`scripts/render-start.sh`), so step 2 is optional there. Set `FORCE_DB_SETUP=1` for one deploy after a schema change.
+   **Render (Node service)**: push the code to GitHub, then *New → Blueprint* and pick the repo (it reads `render.yaml`), or *New → Web Service* with:
    - Build: `npm ci && npm run build` · Start: `npm run start` · Node 22 · Health check `/api/health`
    - Env vars: `DATABASE_URL`, `AUTH_SECRET` (long random string), `NEXT_PUBLIC_SITE_URL` (your onrender.com URL), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 4. Open the site, log in at `/staff-login` with the demo admin, and change the passwords.
