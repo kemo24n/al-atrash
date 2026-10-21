@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { alameenOnly } from "@/lib/catalog";
 import type { OrderStatus, PaymentMethod, Settings } from "@/db/schema";
 import { getSettings } from "./settings";
 import { notifyStoreNewOrder } from "./whatsapp";
@@ -42,7 +43,7 @@ export async function quote(input: QuoteInput, tx: Tx | typeof db = db, settings
   const problems: string[] = [];
   const ids = [...new Set(input.items.map((i) => i.id))].slice(0, 200);
   const rows = ids.length
-    ? await tx.select().from(schema.products).where(and(inArray(schema.products.id, ids), eq(schema.products.active, true)))
+    ? await tx.select().from(schema.products).where(and(inArray(schema.products.id, ids), eq(schema.products.active, true), alameenOnly()))
     : [];
   const byId = new Map(rows.map((r) => [r.id, r]));
 

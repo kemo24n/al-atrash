@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { and, asc, eq, exists, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { alameenOnly } from "@/lib/catalog";
 import { getSettings } from "@/lib/settings";
 import { getStoreBranch } from "@/lib/store-branch";
 import { getCurrentUser } from "@/lib/auth";
@@ -26,7 +27,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     db.select({ slug: schema.categories.slug, name: schema.categories.name, icon: schema.categories.icon })
       .from(schema.categories)
       .where(and(eq(schema.categories.active, true),
-        exists(db.select({ x: sql`1` }).from(schema.products).where(and(eq(schema.products.categoryId, schema.categories.id), eq(schema.products.active, true))))))
+        exists(db.select({ x: sql`1` }).from(schema.products).where(and(eq(schema.products.categoryId, schema.categories.id), eq(schema.products.active, true), alameenOnly())))))
       .orderBy(asc(schema.categories.sort)),
     getCurrentUser(),
     db.query.zones.findMany({ where: eq(schema.zones.active, true), orderBy: asc(schema.zones.sort), with: { branch: { columns: { name: true } } } }),

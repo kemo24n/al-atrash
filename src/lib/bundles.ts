@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { alameenOnly } from "@/lib/catalog";
 
 /** Ready-made baskets shown on the home page. Items are matched by product name; edit freely. */
 export const BUNDLES = [
@@ -21,7 +22,7 @@ export async function listBundles(): Promise<BundleView[]> {
     id: schema.products.id, slug: schema.products.slug, name: schema.products.name, unit: schema.products.unit, price: schema.products.price,
     image: schema.products.image, stock: schema.products.stock, icon: schema.categories.icon,
   }).from(schema.products).innerJoin(schema.categories, eq(schema.products.categoryId, schema.categories.id))
-    .where(and(inArray(schema.products.name, names), eq(schema.products.active, true), eq(schema.products.soldBy, "unit")));
+    .where(and(inArray(schema.products.name, names), eq(schema.products.active, true), alameenOnly(), eq(schema.products.soldBy, "unit")));
   return BUNDLES.map((b) => {
     const items = b.items.flatMap(([n, qty]) => {
       const p = rows.find((r) => r.name === n && r.stock > 0);

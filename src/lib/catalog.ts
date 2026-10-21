@@ -9,9 +9,12 @@ const cardCols = {
   stock: p.stock, image: p.image, soldBy: p.soldBy, weightOptions: p.weightOptions, description: p.description, category: { icon: schema.categories.icon },
 };
 
+/** Single-branch demo: only items that came from Al-Ameen are ever listed. */
+export const alameenOnly = () => (process.env.STORE_BRANCH_CODE ? sql`coalesce(${p.sku}, '') like 'alm:%'` : undefined);
+
 function base(where: SQL | undefined) {
   return db.select(cardCols).from(p).innerJoin(schema.categories, eq(p.categoryId, schema.categories.id))
-    .where(and(eq(p.active, true), where));
+    .where(and(eq(p.active, true), alameenOnly(), where));
 }
 
 export const listFeatured = (limit = 12) => base(eq(p.featured, true)).orderBy(desc(p.soldCount)).limit(limit);
@@ -77,7 +80,7 @@ export async function listBuyAgain(userId: string, limit = 12) {
 export async function listFavorites(userId: string) {
   return db.select(cardCols).from(p).innerJoin(schema.categories, eq(p.categoryId, schema.categories.id))
     .innerJoin(schema.favorites, and(eq(schema.favorites.productId, p.id), eq(schema.favorites.userId, userId)))
-    .where(eq(p.active, true)).orderBy(desc(schema.favorites.createdAt));
+    .where(and(eq(p.active, true), alameenOnly())).orderBy(desc(schema.favorites.createdAt));
 }
 
 export const listFresh = (limit = 12) =>

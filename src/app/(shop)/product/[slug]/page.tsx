@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { Banknote, ChevronLeft, Clock, PackageCheck, ShieldCheck } from "lucide-react";
 import { db, schema } from "@/db";
+import { alameenOnly } from "@/lib/catalog";
 import { listByCategory } from "@/lib/catalog";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { Price } from "@/components/shop/Price";
@@ -15,7 +16,7 @@ import { discountPct } from "@/lib/format";
 type Props = { params: Promise<{ slug: string }> };
 
 async function load(slug: string) {
-  return db.query.products.findFirst({ where: and(eq(schema.products.slug, decodeURIComponent(slug)), eq(schema.products.active, true)), with: { category: true } });
+  return db.query.products.findFirst({ where: and(eq(schema.products.slug, decodeURIComponent(slug)), eq(schema.products.active, true), alameenOnly()), with: { category: true } });
 }
 
 export async function generateMetadata({ params }: Props) {

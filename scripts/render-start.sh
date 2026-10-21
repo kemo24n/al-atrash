@@ -8,5 +8,6 @@ npx drizzle-kit push --force || echo "⚠ schema update failed, check DATABASE_U
 if node scripts/needs-seed.mjs; then
   npx tsx src/db/seed.ts || echo "⚠ seeding failed, check DATABASE_URL"
 fi
+node scripts/only-alameen.mjs
 (npx tsx scripts/pull-images.ts || echo "images: kept remote URLs") &
 exec npx next start -p "${PORT:-10000}" -H 0.0.0.0
