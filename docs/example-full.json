@@ -1,0 +1,10 @@
+{
+  "branch_code": "01",
+  "sync_type": "full",
+  "sent_at": "2026-10-21T03:00:00+03:00",
+  "items": [
+    { "item_code": "1001", "unit": "قطعة", "barcode": "6281031255017", "name": "شامبو بانتين حماية من التقصف 400 مل", "price": 15000, "currency": "SYP", "category": "عناية شخصية", "active": true },
+    { "item_code": "1001", "unit": "كرتونة", "barcode": null, "name": "شامبو بانتين حماية من التقصف 400 مل", "price": 170000, "currency": "SYP", "category": "عناية شخصية", "active": true },
+    { "item_code": "3301", "unit": "كيلو", "barcode": null, "name": "سكر", "price": 12000, "currency": "SYP", "category": "مواد غذائية", "active": true }
+  ]
+}

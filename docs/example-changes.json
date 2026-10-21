@@ -1,0 +1,8 @@
+{
+  "branch_code": "01",
+  "sync_type": "changes",
+  "items": [
+    { "item_code": "1001", "unit": "قطعة", "name": "شامبو بانتين حماية من التقصف 400 مل", "price": 15500 },
+    { "item_code": "3301", "unit": "كيلو", "name": "سكر", "price": 12000, "active": false }
+  ]
+}
