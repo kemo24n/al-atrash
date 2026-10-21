@@ -1,0 +1,38 @@
+Endpoint:
+POST https://attrash-pullman.onrender.com/api/v1/alameen/items
+
+Headers:
+Authorization: Bearer <KEY>
+Content-Type: application/json
+
+Check the key (GET):
+curl -H "Authorization: Bearer <KEY>" https://attrash-pullman.onrender.com/api/v1/alameen/items
+
+Send one test item (POST):
+curl -X POST https://attrash-pullman.onrender.com/api/v1/alameen/items -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" -d "{\"branch_code\":\"01\",\"sync_type\":\"changes\",\"items\":[{\"item_code\":\"1001\",\"name\":\"test\",\"price\":1000}]}"
+
+Send an example file (POST):
+curl -X POST https://attrash-pullman.onrender.com/api/v1/alameen/items -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json; charset=utf-8" --data-binary "@example-changes.json"
+
+Body:
+{
+  "branch_code": "01",
+  "sync_type": "changes",
+  "sent_at": "2026-10-21T18:00:00+03:00",
+  "items": [
+    {
+      "item_code": "1001",
+      "unit": "قطعة",
+      "barcode": "6281031255017",
+      "name": "شامبو بانتين حماية من التقصف 400 مل",
+      "price": 15000,
+      "currency": "SYP",
+      "category": "عناية شخصية",
+      "active": true,
+      "updated_at": "2026-10-21T17:55:00+03:00"
+    }
+  ]
+}
+
+Reply (HTTP 200):
+{"ok":true,"received":3,"inserted":1,"updated":2,"deactivated":0,"rejected":[]}
