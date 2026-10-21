@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ربط الأمين مع الأطرش أونلاين</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 11.5pt; line-height: 1.75; color: #1c1c1c; }
+  h1 { font-size: 16pt; margin: 0 0 2pt; }
+  .sub { color: #666; margin: 0 0 14pt; }
+  h2 { font-size: 12.5pt; margin: 16pt 0 4pt; border-bottom: 1px solid #ddd; padding-bottom: 2pt; }
+  p { margin: 4pt 0; }
+  code, .ltr { direction: ltr; unicode-bidi: isolate; font-family: Consolas, "Segoe UI", Tahoma, monospace; font-size: 10pt; background: #f3f3f3; padding: 0 3pt; border-radius: 3px; }
+  pre { direction: ltr; text-align: left; font-family: Consolas, "Segoe UI", Tahoma, monospace; font-size: 9.5pt; background: #f6f6f6; border: 1px solid #e3e3e3; padding: 8pt 10pt; border-radius: 4px; white-space: pre-wrap; word-break: break-all; margin: 6pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0; }
+  td { border-bottom: 1px solid #eee; padding: 4pt 6pt; vertical-align: top; }
+  td:first-child { width: 28%; }
+  ul { margin: 4pt 0; padding-right: 18pt; }
+  li { margin: 2pt 0; }
+</style>
+</head>
+<body>
+
+<h1>ربط برنامج الأمين مع الأطرش أونلاين</h1>
+<p class="sub">Solunera</p>
+
+<p>مرحبا،</p>
+<p>برنامج الأمين بكل فرع بيبعت الأصناف والأسعار لعنوان عنا. نحنا ما منتصل بقاعدة بيانات الأمين وما منكتب عليها شي، وما منحتاج كميات.</p>
+
+<h2>العنوان</h2>
+<pre>POST https://attrash-pullman.onrender.com/api/v1/alameen/items</pre>
+<p>مع هدول الهيدرات:</p>
+<pre>Authorization: Bearer &lt;KEY&gt;
+Content-Type: application/json</pre>
+<p>كل فرع إله مفتاح خاص، ومفتاح فرع بولمان رح ابعتلك ياه برسالة لحال.</p>
+<p>لتتأكد إنو المفتاح شغّال بدون ما تبعت أصناف، ابعت طلب <code>GET</code> على نفس العنوان مع نفس الهيدر.</p>
+
+<h2>شكل البيانات</h2>
+<pre>{
+  "branch_code": "01",
+  "sync_type": "changes",
+  "sent_at": "2026-10-21T18:00:00+03:00",
+  "items": [
+    {
+      "item_code": "1001",
+      "unit": "قطعة",
+      "barcode": "6281031255017",
+      "name": "شامبو بانتين حماية من التقصف 400 مل",
+      "price": 15000,
+      "currency": "SYP",
+      "category": "عناية شخصية",
+      "active": true,
+      "updated_at": "2026-10-21T17:55:00+03:00"
+    }
+  ]
+}</pre>
+
+<h2>الحقول</h2>
+<table>
+  <tr><td><code>branch_code</code></td><td>رمز الفرع عندكم بالأمين. إجباري، ولازم يكون نفس فرع المفتاح.</td></tr>
+  <tr><td><code>sync_type</code></td><td>إجباري. القيمة <code>changes</code> للتعديلات، أو <code>full</code> لكل أصناف الفرع.</td></tr>
+  <tr><td><code>sent_at</code></td><td>وقت الإرسال. اختياري.</td></tr>
+  <tr><td><code>item_code</code></td><td>رمز الصنف. إجباري.</td></tr>
+  <tr><td><code>unit</code></td><td>الوحدة. إذا الصنف إله أكتر من وحدة (قطعة، علبة، كرتونة) كل وحدة بسطر لحالها بسعرها. إذا ما انبعتت منعتبرها قطعة.</td></tr>
+  <tr><td><code>barcode</code></td><td>الباركود. اختياري بس بيفيدنا كتير إذا موجود.</td></tr>
+  <tr><td><code>name</code></td><td>اسم الصنف. إجباري.</td></tr>
+  <tr><td><code>price</code></td><td>سعر المفرق للوحدة. إجباري، رقم أو نص عادي.</td></tr>
+  <tr><td><code>currency</code></td><td>العملة. إذا ما انبعتت منعتبرها ليرة سورية.</td></tr>
+  <tr><td><code>category</code></td><td>القسم. اختياري.</td></tr>
+  <tr><td><code>active</code></td><td>إذا الصنف موقوف ابعتها <code>false</code>. إذا ما انبعتت منعتبر الصنف فعّال.</td></tr>
+  <tr><td><code>updated_at</code></td><td>آخر تعديل على الصنف. اختياري.</td></tr>
+</table>
+
+<h2>التوقيت</h2>
+<ul>
+  <li>كل 10 لـ 15 دقيقة طلب تعديلات (<code>changes</code>) فيه بس الأصناف اللي تغيرت.</li>
+  <li>مرة باليوم بالليل طلب كامل (<code>full</code>) فيه كل أصناف الفرع. أي صنف ما بيجي بالطلب الكامل منعتبره انحذف ومنشيله من المتجر.</li>
+  <li>الحد الأعلى 20000 صنف بالطلب الواحد، و 60 طلب بالدقيقة لكل فرع. الطلب الكامل لازم يكون بطلب واحد.</li>
+  <li>إذا انبعتت نفس البيانات مرتين ما بيتكرر شي، فإذا فشل طلب عيده عادي.</li>
+</ul>
+
+<h2>الرد</h2>
+<p>إذا نجح الطلب بيرجع كود 200 مع هالرد:</p>
+<pre>{"ok":true,"received":3,"inserted":1,"updated":2,"deactivated":0,"rejected":[]}</pre>
+<p>إذا في صنف فيه غلط، باقي الأصناف بتنحفظ والصنف الغلط بيرجع ضمن <code>rejected</code> مع السبب.</p>
+<table>
+  <tr><td><code>401</code></td><td>المفتاح غلط أو ناقص</td></tr>
+  <tr><td><code>403</code></td><td>رمز الفرع ما بيطابق المفتاح</td></tr>
+  <tr><td><code>413</code></td><td>الطلب كبير كتير</td></tr>
+  <tr><td><code>422</code></td><td>شكل البيانات غلط، والتفاصيل بترجع بالرد</td></tr>
+  <tr><td><code>429</code></td><td>طلبات كتير، استنى دقيقة</td></tr>
+  <tr><td><code>500</code></td><td>مشكلة عنا، ما انحفظ شي، عيد الطلب</td></tr>
+</table>
+<p>السيرفر الحالي تجريبي، وإذا ما إجاه طلب لربع ساعة بينام، فأول طلب بعدها ممكن ياخد لحد دقيقة. خلي مهلة الطلب حوالي 90 ثانية.</p>
+
+<h2>تجربة سريعة</h2>
+<p>فحص المفتاح:</p>
+<pre>curl -H "Authorization: Bearer &lt;KEY&gt;" https://attrash-pullman.onrender.com/api/v1/alameen/items</pre>
+<p>إرسال صنف تجربة:</p>
+<pre>curl -X POST https://attrash-pullman.onrender.com/api/v1/alameen/items -H "Authorization: Bearer &lt;KEY&gt;" -H "Content-Type: application/json" -d "{\"branch_code\":\"01\",\"sync_type\":\"changes\",\"items\":[{\"item_code\":\"1001\",\"name\":\"test\",\"price\":1000}]}"</pre>
+<p>ومعها ملفين أمثلة: <code>example-full.json</code> و <code>example-changes.json</code>.</p>
+
+<h2>خطوات التجربة</h2>
+<p>أول شي فحص المفتاح، بعدين طلب تعديلات فيه 10 لـ 20 صنف ومنقارنهن مع الأمين، بعدين طلب كامل لفرع بولمان، وبعدها منشغّل الإرسال التلقائي.</p>
+
+<h2>بدي منك</h2>
+<ul>
+  <li>رمز فرع بولمان بالأمين (حاطين 01 مؤقتاً).</li>
+  <li>الأسعار بالليرة الجديدة ولا القديمة؟</li>
+  <li>جهاز الفرع عليه نت ثابت؟</li>
+  <li>قائمة كل الفروع مع رموزها.</li>
+  <li>وإذا عندك صيغة تصدير جاهزة من الأمين ابعتلي ياها، منتأقلم معها.</li>
+</ul>
+
+<p>شكراً</p>
+</body>
+</html>
