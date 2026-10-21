@@ -143,6 +143,11 @@ export const products = pgTable("products", {
   image: text("image"),
   featured: boolean("featured").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
+  /** Checked by the shelf AI at each shift. When true, only the scan (or a staff override) sets availability. */
+  aiMonitored: boolean("ai_monitored").default(false).notNull(),
+  /** Who set the current availability: alameen (item is active there) | ai (shelf scan) | manual (staff). */
+  availabilitySource: text("availability_source").default("manual").notNull(),
+  availabilityAt: timestamp("availability_at", { withTimezone: true }),
   soldCount: integer("sold_count").default(0).notNull(),
   categoryId: text("category_id").notNull().references(() => categories.id),
   createdAt: createdAt(),

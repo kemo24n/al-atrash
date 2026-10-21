@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
+import { slugify } from "@/lib/format";
 
 // Al-Ameen pushes items and prices to us; we never write back to it.
 // Spec agreed with Al-Ameen's developer: POST /api/v1/alameen/items, one key per branch,
@@ -48,6 +49,58 @@ export type PushResult = {
   ok: true; received: number; inserted: number; updated: number; deactivated: number;
   rejected: { index: number; item_code?: string; error: string }[];
 };
+
+/** Stock value meaning "available" for items without a count. Above the store's "only N left" range (1-8). */
+export const AVAILABLE = 999;
+
+/**
+ * The demo store sells one branch (STORE_BRANCH_CODE, Pullman). Its Al-Ameen items become store products:
+ * same name, price, unit and category, linked through alameen_items.product_id (sku "alm:<code>:<unit>").
+ * Availability: AI-monitored products keep what the shelf scan set; all others follow Al-Ameen's active flag.
+ * A full sync also hides every product that did not come from Al-Ameen (the sample catalogue).
+ */
+async function syncStoreProducts(branchId: string, syncId: string, full: boolean) {
+  const a = schema.alameenItems, p = schema.products;
+  const items = await db.select().from(a).where(full ? eq(a.branchId, branchId) : and(eq(a.branchId, branchId), eq(a.lastSyncId, syncId)));
+  if (!items.length) return;
+
+  const cats = new Map((await db.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories)).map((c) => [c.name, c.id]));
+  for (const name of new Set(items.map((i) => i.category ?? "أصناف أخرى"))) {
+    if (cats.has(name)) continue;
+    const [c] = await db.insert(schema.categories).values({ name, slug: `${slugify(name)}-${randomBytes(2).toString("hex")}`, sort: 50 })
+      .returning({ id: schema.categories.id });
+    cats.set(name, c.id);
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const chunk = items.slice(i, i + CHUNK);
+      const rows = chunk.map((it) => ({
+        sku: `alm:${it.itemCode}:${it.unit}`, name: it.name, slug: `${slugify(it.name)}-${it.itemCode}`, unit: it.unit,
+        price: it.price, barcode: it.barcode, categoryId: cats.get(it.category ?? "أصناف أخرى")!, active: it.active,
+        stock: it.active ? AVAILABLE : 0, availabilitySource: "alameen", availabilityAt: now,
+      }));
+      const saved = await tx.insert(p).values(rows).onConflictDoUpdate({
+        target: p.sku,
+        set: {
+          name: sql`excluded.name`, unit: sql`excluded.unit`, price: sql`excluded.price`, barcode: sql`excluded.barcode`,
+          categoryId: sql`excluded.category_id`, active: sql`excluded.active`,
+          // the shelf AI owns availability for monitored products; Al-Ameen only switches it off when the item is gone
+          stock: sql`case when ${p.aiMonitored} and excluded.active then ${p.stock} else excluded.stock end`,
+          availabilitySource: sql`case when ${p.aiMonitored} and excluded.active then ${p.availabilitySource} else excluded.availability_source end`,
+          availabilityAt: sql`case when ${p.aiMonitored} and excluded.active then ${p.availabilityAt} else excluded.availability_at end`,
+        },
+      }).returning({ id: p.id, sku: p.sku });
+      const bySku = new Map(saved.map((s) => [s.sku, s.id]));
+      for (const it of chunk) {
+        const productId = bySku.get(`alm:${it.itemCode}:${it.unit}`);
+        if (productId && productId !== it.productId) await tx.update(a).set({ productId }).where(eq(a.id, it.id));
+      }
+    }
+    if (full) await tx.update(p).set({ active: false }).where(sql`coalesce(${p.sku}, '') not like 'alm:%'`);
+  });
+}
 
 /** Finds the branch a key belongs to. Comparing hashes means a leaked database never leaks the keys. */
 export async function branchForKey(key: string) {
@@ -120,6 +173,10 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
     await db.update(schema.alameenSyncs).set({ ok: false, error: e instanceof Error ? e.message.slice(0, 500) : "unknown error" })
       .where(eq(schema.alameenSyncs.id, sync.id));
     throw e;
+  }
+
+  if (branch.alameenCode && branch.alameenCode === process.env.STORE_BRANCH_CODE) {
+    await syncStoreProducts(branch.id, sync.id, push.sync_type === "full");
   }
 
   await db.update(schema.alameenSyncs).set({
