@@ -1,5 +1,7 @@
-// Single-branch demo (STORE_BRANCH_CODE set): the store sells ONLY items that came from Al-Ameen.
-// Hides every product whose sku is not "alm:..." (the sample catalogue, anything added by hand).
+// Single-branch demo (STORE_BRANCH_CODE set): the system holds ONLY items that came from Al-Ameen.
+// Deletes every product whose sku is not "alm:..." (the sample catalogue, anything added by hand),
+// then deletes categories left without products. Past orders keep their item names and prices
+// (order_items copies them), favourites of deleted products go with them.
 // Run on every boot by scripts/render-start.sh. Safe to run any number of times.
 import pg from "pg";
 
@@ -9,9 +11,13 @@ const ssl = /supabase\.(co|com)|sslmode=require/.test(url) ? { rejectUnauthorize
 const client = new pg.Client({ connectionString: url.replace(/[?&]sslmode=[^&]*/, ""), ssl });
 try {
   await client.connect();
-  const r = await client.query("update products set active = false where active and coalesce(sku, '') not like 'alm:%'");
-  console.log(`→ Al-Ameen only: hid ${r.rowCount} product(s) that did not come from Al-Ameen`);
+  await client.query("begin");
+  const p = await client.query("delete from products where coalesce(sku, '') not like 'alm:%'");
+  const c = await client.query("delete from categories c where not exists (select 1 from products p where p.category_id = c.id)");
+  await client.query("commit");
+  console.log(`→ Al-Ameen only: deleted ${p.rowCount} product(s) and ${c.rowCount} empty categor(ies) that did not come from Al-Ameen`);
 } catch (e) {
+  await client.query("rollback").catch(() => {});
   console.error("→ could not apply Al-Ameen-only rule:", e.message);
 } finally {
   await client.end().catch(() => {});

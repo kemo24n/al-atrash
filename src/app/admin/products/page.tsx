@@ -6,6 +6,7 @@ import { PageHead } from "@/components/admin/Page";
 import { InlineNumber, InlineToggle } from "@/components/admin/ProductRowEdit";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { cn } from "@/lib/format";
+import { alameenOnly } from "@/lib/catalog";
 
 export const metadata = { title: "المنتجات" };
 
@@ -13,7 +14,9 @@ export default async function Products({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const p = schema.products;
   const q = (sp.q ?? "").trim();
+  const fromAlameen = !!process.env.STORE_BRANCH_CODE;
   const where = and(
+    alameenOnly(),
     q ? or(ilike(p.name, `%${q}%`), ilike(p.sku, `%${q}%`), ilike(p.barcode, `%${q}%`), ilike(p.brand, `%${q}%`)) : undefined,
     sp.cat ? eq(p.categoryId, sp.cat) : undefined,
     sp.f === "low" ? or(and(eq(p.soldBy, "unit"), lte(p.stock, 10)), and(eq(p.soldBy, "weight"), lte(p.stock, 3000))) : sp.f === "hidden" ? eq(p.active, false) : sp.f === "featured" ? eq(p.featured, true) : sp.f === "all" ? undefined : eq(p.active, true),
@@ -28,11 +31,13 @@ export default async function Products({ searchParams }: { searchParams: Promise
 
   return (
     <div>
-      <PageHead title="المنتجات" sub={`${rows.length} منتج — عدّل السعر والكمية مباشرة من الجدول`} actions={<>
-        <a href="/admin/products/export" className="btn-ghost btn-sm h-11"><Download className="h-4 w-4" /> تصدير CSV</a>
-        <Link href="/admin/products/import" className="btn-ghost btn-sm h-11"><Upload className="h-4 w-4" /> استيراد من Excel</Link>
-        <Link href="/admin/products/new" className="btn-primary btn-sm h-11"><Plus className="h-4 w-4" /> منتج جديد</Link>
-      </>} />
+      <PageHead title="المنتجات"
+        sub={fromAlameen ? `${rows.length} منتج · الأصناف والأسعار بتجي من الأمين بس، وبتتحدّث لحالها` : `${rows.length} منتج — عدّل السعر والكمية مباشرة من الجدول`}
+        actions={<>
+          <a href="/admin/products/export" className="btn-ghost btn-sm h-11"><Download className="h-4 w-4" /> تصدير CSV</a>
+          {!fromAlameen && <Link href="/admin/products/import" className="btn-ghost btn-sm h-11"><Upload className="h-4 w-4" /> استيراد من Excel</Link>}
+          {!fromAlameen && <Link href="/admin/products/new" className="btn-primary btn-sm h-11"><Plus className="h-4 w-4" /> منتج جديد</Link>}
+        </>} />
       {sp.saved && <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">✓ تم حفظ المنتج</p>}
       <div className="mb-4 flex flex-wrap gap-2">
         <form className="relative min-w-[220px] flex-1" action="/admin/products">

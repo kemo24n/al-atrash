@@ -73,9 +73,14 @@ const ProductSchema = z.object({
   unit: z.string().min(1).default("قطعة"),
 });
 
+/** Single-branch demo: every item comes from Al-Ameen, so nothing is created here (it would be deleted on the next boot). */
+const fromAlameen = () => !!process.env.STORE_BRANCH_CODE;
+const ALAMEEN_ONLY_MSG = "الأصناف بتجي من الأمين بس. أي صنف جديد لازم ينضاف بالأمين وبيوصل لحاله.";
+
 export async function saveProductAction(_: FormState, fd: FormData): Promise<FormState> {
   await guard();
   const id = str(fd.get("id"));
+  if (fromAlameen() && !id) return { error: ALAMEEN_ONLY_MSG };
   const parsed = ProductSchema.safeParse({
     name: str(fd.get("name")), categoryId: str(fd.get("categoryId")), price: int(fd.get("price")),
     comparePrice: int(fd.get("comparePrice")), stock: int(fd.get("stock")) ?? 0, unit: str(fd.get("unit")) ?? "قطعة",
@@ -96,6 +101,8 @@ export async function saveProductAction(_: FormState, fd: FormData): Promise<For
     brand: str(fd.get("brand")), description: str(fd.get("description")), sku: str(fd.get("sku")), barcode: str(fd.get("barcode")),
     image, featured: bool(fd.get("featured")), active: bool(fd.get("active")),
   };
+  // the sku links an Al-Ameen item to its product; never let an edit break that link
+  if (fromAlameen()) delete (values as { sku?: unknown }).sku;
   try {
     if (id) await db.update(schema.products).set(values).where(eq(schema.products.id, id));
     else await db.insert(schema.products).values({ ...values, slug: `${slugify(d.name)}-${Math.random().toString(36).slice(2, 6)}` });
@@ -123,8 +130,9 @@ export async function quickUpdateProductAction(id: string, patch: { price?: numb
 
 export async function deleteProductAction(id: string) {
   await guard(["ADMIN"]);
-  // Soft-delete keeps order history intact.
-  await db.update(schema.products).set({ active: false, sku: null }).where(eq(schema.products.id, id));
+  // Soft-delete keeps order history intact. Al-Ameen items keep their sku so the next push still finds them
+  // (the item reappears if Al-Ameen still sends it as active: delete it in Al-Ameen to remove it for good).
+  await db.update(schema.products).set(fromAlameen() ? { active: false } : { active: false, sku: null }).where(eq(schema.products.id, id));
   revalidatePath("/", "layout");
 }
 
@@ -136,6 +144,7 @@ export async function deleteProductAction(id: string) {
  */
 export async function importProductsAction(_: FormState, fd: FormData): Promise<FormState> {
   await guard();
+  if (fromAlameen()) return { error: ALAMEEN_ONLY_MSG };
   const file = fd.get("file") as File | null;
   if (!file || file.size === 0) return { error: "اختر ملف CSV" };
   if (file.size > 4 * 1024 * 1024) return { error: "الملف كبير جداً (الحد 4MB)" };
