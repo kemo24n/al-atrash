@@ -13,7 +13,8 @@
     "db:setup": "drizzle-kit push --force && tsx src/db/seed.ts",
     "db:reset": "FORCE_SEED=1 tsx src/db/seed.ts",
     "images:pull": "tsx scripts/pull-images.ts",
-    "db:setup:supabase": "drizzle-kit push --force && tsx src/db/seed.ts && tsx scripts/pull-images.ts"
+    "db:setup:supabase": "drizzle-kit push --force && tsx src/db/seed.ts && tsx scripts/pull-images.ts",
+    "db:local": "pglite-server --db=./.pglite --port=5433 --max-connections=10"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.3.0",
@@ -33,6 +34,8 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-socket": "^0.2.13",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^26.6.3",
     "@types/papaparse": "^5.5.2",

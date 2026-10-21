@@ -2,7 +2,7 @@
 // All money values are integers in NEW Syrian pounds (ل.س الجديدة — after removing two zeros).
 import { relations, sql } from "drizzle-orm";
 import {
-  boolean, index, integer, pgEnum, pgTable, primaryKey, text, timestamp,
+  boolean, doublePrecision, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const id = () => text("id").primaryKey().$defaultFn(() => crypto.randomUUID());
@@ -41,7 +41,55 @@ export const branches = pgTable("branches", {
   hours: text("hours").default("24/7").notNull(),
   active: boolean("active").default(true).notNull(),
   sort: integer("sort").default(0).notNull(),
+  /** The branch code Al-Ameen sends with every push (its own numbering, e.g. "07"). */
+  alameenCode: text("alameen_code").unique(),
+  /** sha256 of the branch's API key. The key itself is shown once and never stored. */
+  apiKeyHash: text("api_key_hash"),
+  /** Al-Ameen prices are divided by this to get new Syrian pounds: 100 if the branch still prices in old lira. */
+  priceDivisor: integer("price_divisor").default(1).notNull(),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
 });
+
+/** One row per item and unit as Al-Ameen sends it, per branch. Quantities are never sent or stored. */
+export const alameenItems = pgTable("alameen_items", {
+  id: id(),
+  branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  itemCode: text("item_code").notNull(),
+  unit: text("unit").default("قطعة").notNull(),
+  barcode: text("barcode"),
+  name: text("name").notNull(),
+  category: text("category"),
+  /** Price exactly as Al-Ameen sent it (may be old lira, may have decimals). */
+  rawPrice: doublePrecision("raw_price").notNull(),
+  currency: text("currency").default("SYP").notNull(),
+  /** Price in new Syrian pounds after the branch's divisor. This is what the store uses. */
+  price: integer("price").notNull(),
+  active: boolean("active").default(true).notNull(),
+  /** Set when this item is matched to a store product (and through it to the shelf AI). */
+  productId: text("product_id").references(() => products.id, { onDelete: "set null" }),
+  sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
+  lastSyncId: text("last_sync_id"),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+}, (t) => [
+  uniqueIndex("alameen_items_branch_item_unit").on(t.branchId, t.itemCode, t.unit),
+  index("alameen_items_barcode_idx").on(t.barcode),
+]);
+
+/** Every push from Al-Ameen, so the accountant can compare and we can see what went wrong. */
+export const alameenSyncs = pgTable("alameen_syncs", {
+  id: id(),
+  branchId: text("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  syncType: text("sync_type").notNull(), // changes | full
+  received: integer("received").default(0).notNull(),
+  inserted: integer("inserted").default(0).notNull(),
+  updated: integer("updated").default(0).notNull(),
+  deactivated: integer("deactivated").default(0).notNull(),
+  ok: boolean("ok").default(true).notNull(),
+  error: text("error"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("alameen_syncs_branch_idx").on(t.branchId, t.createdAt)]);
 
 export const zones = pgTable("delivery_zones", {
   id: id(),
@@ -215,7 +263,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   deliveries: many(orders, { relationName: "driver" }),
   pointsLog: many(pointsTx),
 }));
-export const branchesRelations = relations(branches, ({ many }) => ({ zones: many(zones) }));
+export const branchesRelations = relations(branches, ({ many }) => ({ zones: many(zones), alameenItems: many(alameenItems) }));
+export const alameenItemsRelations = relations(alameenItems, ({ one }) => ({
+  branch: one(branches, { fields: [alameenItems.branchId], references: [branches.id] }),
+  product: one(products, { fields: [alameenItems.productId], references: [products.id] }),
+}));
 export const zonesRelations = relations(zones, ({ one }) => ({
   branch: one(branches, { fields: [zones.branchId], references: [branches.id] }),
 }));
@@ -251,6 +303,8 @@ export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type Zone = typeof zones.$inferSelect;
 export type Branch = typeof branches.$inferSelect;
+export type AlameenItem = typeof alameenItems.$inferSelect;
+export type AlameenSync = typeof alameenSyncs.$inferSelect;
 export type Banner = typeof banners.$inferSelect;
 export type Coupon = typeof coupons.$inferSelect;
 export type Settings = typeof settings.$inferSelect;
