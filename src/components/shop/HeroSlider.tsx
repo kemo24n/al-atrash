@@ -5,6 +5,7 @@ import { ArrowLeft, Banknote, Clock, Store, Truck } from "lucide-react";
 import { Mark } from "@/components/ui/Logo";
 import { imgUrl, isScenePhoto } from "./ProductImage";
 import { cn } from "@/lib/format";
+import { useStore } from "./StoreProvider";
 
 type B = { id: string; title: string; subtitle: string | null; cta: string; href: string; image: string | null; theme: string };
 
@@ -15,6 +16,7 @@ const DUR = 6000;
  * A packshot image floats with a glow and parallax; a scene photo (Unsplash, uploads) fills the side with a slow zoom.
  */
 export function HeroSlider({ banners, floaters = [] }: { banners: B[]; floaters?: string[] }) {
+  const { branchName } = useStore().settings;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -111,7 +113,7 @@ export function HeroSlider({ banners, floaters = [] }: { banners: B[]; floaters?
         {[
           { Icon: Truck, t: "توصيل مجاني", s: "لكل مناطق حلب" },
           { Icon: Clock, t: "مفتوحين 24/7", s: "حتى بنص الليل" },
-          { Icon: Store, t: "15 فرع بحلب", s: "الأقرب بيجهّز طلبك" },
+          { Icon: Store, t: branchName ?? "15 فرع بحلب", s: branchName ? "منه بيتجهّز طلبك" : "الأقرب بيجهّز طلبك" },
           { Icon: Banknote, t: "ادفع كاش", s: "ليرة أو دولار" },
         ].map(({ Icon, t, s }, k) => (
           <div key={t} className="flex shrink-0 animate-rise items-center gap-2.5 rounded-2xl bg-white py-2.5 pl-4 pr-2.5 ring-1 ring-ink-line sm:p-3.5" style={{ animationDelay: `${k * 70}ms` }}>

@@ -6,22 +6,8 @@ import { BadgePercent, ChevronDown, MapPin, Search, ShoppingBasket, User, Zap } 
 import { Logo, Mark } from "@/components/ui/Logo";
 import { CatIcon } from "@/components/ui/Icon";
 import { cartCount, useCart, usePrefs, useUi } from "@/store/cart";
-import { useCurrency, useMounted, useStore } from "./StoreProvider";
+import { useMounted, useStore } from "./StoreProvider";
 import { cn } from "@/lib/format";
-
-export function CurrencyToggle({ className }: { className?: string }) {
-  const [c, setC] = useCurrency();
-  return (
-    <div className={cn("relative grid h-10 grid-cols-2 items-center rounded-xl bg-paper p-1 text-xs font-black ring-1 ring-ink-line", className)} role="group" aria-label="العملة">
-      <span className={cn("absolute inset-y-1 w-[calc(50%-4px)] rounded-lg bg-ink shadow transition-all duration-300", c === "SYP" ? "right-1" : "right-[calc(50%+3px)]")} />
-      {(["SYP", "USD"] as const).map((k) => (
-        <button key={k} onClick={() => setC(k)} className={cn("relative z-10 h-full rounded-lg px-2.5 transition-colors", c === k ? "text-brand-400" : "text-ink-mute hover:text-ink")}>
-          {k === "SYP" ? "ل.س" : "$"}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 const HINTS = ["بيبسي باردة", "تاكيس", "قهوة الأطرش", "متة", "برينغلز", "حليب", "فيري", "إندومي", "كيندر"];
 
@@ -65,9 +51,9 @@ function ZoneButton({ compact }: { compact?: boolean }) {
 function LiveStrip() {
   const { settings } = useStore();
   const msgs = [
-    settings.isOpen ? "مفتوحين هلأ · 24 ساعة، 7 أيام" : "مسكّرين هلأ، منرجع بسرعة",
+    settings.isOpen ? settings.openHours : "مسكّرين هلأ، منرجع بسرعة",
     "التوصيل مجاني لكل مناطق حلب",
-    "15 فرع داخل حلب",
+    settings.branchName ? `طلبك بيتجهّز من ${settings.branchName}` : "15 فرع داخل حلب",
     "الدفع كاش عند الاستلام، ليرة أو دولار",
     settings.announcement ?? "",
     `للطلب والاستفسار ${settings.phone}`,
@@ -113,7 +99,6 @@ export function Header({ categories }: { categories: { slug: string; name: strin
         <div className="container-x flex h-16 items-center gap-2 md:hidden">
           <Link href="/" className="flex items-center" aria-label="الأطرش"><Mark className="h-11 w-11 rounded-full shadow-pop" /></Link>
           <ZoneButton compact />
-          <CurrencyToggle />
           <Link href={accountHref} className="grid h-10 w-10 place-items-center rounded-xl bg-paper" aria-label="حسابي"><User className="h-5 w-5" /></Link>
         </div>
         <div className="container-x pb-2.5 md:hidden"><SearchTrigger /></div>
@@ -124,7 +109,6 @@ export function Header({ categories }: { categories: { slug: string; name: strin
           <div className="hidden lg:block"><ZoneButton /></div>
           <SearchTrigger className="flex-1" />
           <div className="flex items-center gap-2">
-            <CurrencyToggle />
             <Link href={accountHref} className="flex h-12 items-center gap-2 rounded-2xl px-3 font-bold text-ink hover:bg-paper">
               <User className="h-5 w-5" /><span className="max-w-[8rem] truncate text-sm">{user ? user.name.split(" ")[0] : "دخول"}</span>
             </Link>

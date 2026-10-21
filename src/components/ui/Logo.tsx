@@ -38,7 +38,7 @@ export function Logo({ href = "/", light = false, sub = true, className }: { hre
       <Mark className="h-11 w-11 shadow-pop rounded-full transition-transform duration-500 group-hover:-rotate-6" />
       <span className="leading-none">
         <span className={cn("block text-[24px] font-black tracking-tight", light ? "text-white" : "text-ink")}>الأطرش</span>
-        {sub && <span className={cn("mt-1 block text-[11px] font-bold", light ? "text-brand-400" : "text-ink-mute")}>أستاذ القهوة · 15 فرع بحلب</span>}
+        {sub && <span className={cn("mt-1 block text-[11px] font-bold", light ? "text-brand-400" : "text-ink-mute")}>أستاذ القهوة · حلب</span>}
       </span>
     </Link>
   );

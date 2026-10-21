@@ -10,7 +10,7 @@ export function Footer({ s, categories }: { s: PublicSettings; categories: { slu
       <div className="container-x grid gap-8 py-10 md:grid-cols-4 md:gap-10 md:py-14">
         <div className="md:col-span-1">
           <Logo light />
-          <p className="mt-4 text-sm leading-7 text-white/70">سلسلة محلات الأطرش: كل مستلزمات البيت بمكان واحد. 15 فرع داخل حلب، توصيل مجاني لكل المناطق، ومفتوحين 24 ساعة.</p>
+          <p className="mt-4 text-sm leading-7 text-white/70">سلسلة محلات الأطرش: كل مستلزمات البيت بمكان واحد. {s.branchName ? `طلبك بيتجهّز من ${s.branchName}` : "15 فرع داخل حلب"}، والتوصيل مجاني لكل المناطق.</p>
           <a href="https://instagram.com/al_attrash_" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-brand-400 hover:bg-white/15">@al_attrash_ على إنستغرام</a>
         </div>
         <div className="hidden md:block">

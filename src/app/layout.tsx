@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "الأطرش أونلاين · كل مستلزمات البيت لباب بيتك", template: "%s | الأطرش" },
-  description: "سلسلة محلات الأطرش: 15 فرع داخل حلب، توصيل مجاني لكل المناطق ومفتوحين 24/7. شيبسات، مشروبات، قهوة، ألبان، منظفات وكل أغراض البيت.",
+  description: "سلسلة محلات الأطرش بحلب: اطلب أونلاين والتوصيل مجاني لكل المناطق. شيبسات، مشروبات، قهوة، ألبان، منظفات وكل أغراض البيت.",
   applicationName: "الأطرش",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/brand/mark.svg", apple: "/brand/apple-touch-icon.png" },

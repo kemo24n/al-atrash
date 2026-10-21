@@ -1,13 +1,14 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useFavs } from "@/store/favs";
-import { usePrefs } from "@/store/cart";
 import { money, type Currency } from "@/lib/format";
 
 export type PublicSettings = {
   storeName: string; tagline: string; phone: string; whatsapp: string; address: string; usdRate: number;
   minOrder: number; freeDeliveryOver: number; isOpen: boolean; openHours: string; announcement: string | null;
   pointsPerAmount: number; pointValue: number;
+  /** Set when the store sells a single branch (the Pullman demo). */
+  branchName: string | null;
 };
 type Ctx = { settings: PublicSettings; user: { name: string; points: number; role: string } | null; favIds?: string[] };
 const StoreCtx = createContext<Ctx | null>(null);
@@ -26,12 +27,12 @@ export function useStore() {
   return c;
 }
 
-/** Hydration-safe currency (persisted pref is only read after mount). */
+/**
+ * Prices are shown in Syrian pounds only: Al-Attrash keep their dollar rate internal (it differs from the
+ * market rate) and don't want customers to see it. Paying cash in dollars is still possible at checkout.
+ */
 export function useCurrency(): [Currency, (c: Currency) => void] {
-  const { currency, setCurrency } = usePrefs();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return [mounted ? currency : "SYP", setCurrency];
+  return ["SYP", () => {}];
 }
 
 export function useMoney() {

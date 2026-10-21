@@ -35,7 +35,7 @@ export function ZonePicker({ zones }: { zones: ZoneOption[] }) {
           <button onClick={close} className="absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-ink/10" aria-label="إغلاق"><X className="h-5 w-5" /></button>
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink text-brand-400"><MapPin className="h-5 w-5" /></span>
           <h2 className="mt-3 text-2xl font-black">وين بدك ياه يوصل؟</h2>
-          <p className="mt-1 text-sm font-bold text-ink/70">التوصيل مجاني لكل المناطق، وأقرب فرع لعندك بيجهّز طلبك.</p>
+          <p className="mt-1 text-sm font-bold text-ink/70">التوصيل مجاني لكل المناطق، والفرع المكتوب تحت كل منطقة بيجهّز طلبك.</p>
         </div>
         <div className="shrink-0 p-4 pb-2">
           <label className="relative block">

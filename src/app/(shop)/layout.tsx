@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, exists, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSettings } from "@/lib/settings";
+import { getStoreBranch } from "@/lib/store-branch";
 import { getCurrentUser } from "@/lib/auth";
 import { StoreProvider, type PublicSettings } from "@/components/shop/StoreProvider";
 import { Header } from "@/components/shop/Header";
@@ -19,19 +20,25 @@ import { Splash } from "@/components/shop/Splash";
 export const dynamic = "force-dynamic";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [s, cats, user, zoneRows] = await Promise.all([
+  const [s, cats, user, zoneRows, storeBranch] = await Promise.all([
     getSettings(),
+    // only categories that have something to sell (the sample ones empty out once Al-Ameen's items arrive)
     db.select({ slug: schema.categories.slug, name: schema.categories.name, icon: schema.categories.icon })
-      .from(schema.categories).where(eq(schema.categories.active, true)).orderBy(asc(schema.categories.sort)),
+      .from(schema.categories)
+      .where(and(eq(schema.categories.active, true),
+        exists(db.select({ x: sql`1` }).from(schema.products).where(and(eq(schema.products.categoryId, schema.categories.id), eq(schema.products.active, true))))))
+      .orderBy(asc(schema.categories.sort)),
     getCurrentUser(),
     db.query.zones.findMany({ where: eq(schema.zones.active, true), orderBy: asc(schema.zones.sort), with: { branch: { columns: { name: true } } } }),
+    getStoreBranch(),
   ]);
-  const zones = zoneRows.map((z) => ({ id: z.id, name: z.name, minutes: z.minutes, branch: z.branch?.name ?? null }));
+  // one-branch store: every delivery area is served by that branch
+  const zones = zoneRows.map((z) => ({ id: z.id, name: z.name, minutes: z.minutes, branch: storeBranch?.name ?? z.branch?.name ?? null }));
   const favIds = user ? (await db.select({ id: schema.favorites.productId }).from(schema.favorites).where(eq(schema.favorites.userId, user.id))).map((f) => f.id) : [];
   const settings: PublicSettings = {
     storeName: s.storeName, tagline: s.tagline, phone: s.phone, whatsapp: s.whatsapp, address: s.address, usdRate: s.usdRate,
     minOrder: s.minOrder, freeDeliveryOver: s.freeDeliveryOver, isOpen: s.isOpen, openHours: s.openHours, announcement: s.announcement,
-    pointsPerAmount: s.pointsPerAmount, pointValue: s.pointValue,
+    pointsPerAmount: s.pointsPerAmount, pointValue: s.pointValue, branchName: storeBranch?.name ?? null,
   };
   return (
     <StoreProvider value={{ settings, user: user ? { name: user.name, points: user.points, role: user.role } : null, favIds }}>
