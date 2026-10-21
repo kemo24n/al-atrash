@@ -10,13 +10,13 @@
 
 | | |
 |---|---|
-| العنوان | `POST {BASE_URL}/api/v1/alameen/items` |
-| فحص الاتصال | `GET {BASE_URL}/api/v1/alameen/items` (نفس المفتاح، بدون body) |
+| العنوان | `POST https://attrash-pullman.onrender.com/api/v1/alameen/items` |
+| فحص الاتصال | `GET https://attrash-pullman.onrender.com/api/v1/alameen/items` (نفس المفتاح، بدون body) |
 | المفتاح | لكل فرع مفتاح خاص، منبعتلك ياه لحال (مو بهالملف) |
 | الهيدرات | `Authorization: Bearer <مفتاح الفرع>` و `Content-Type: application/json` |
 | البروتوكول | HTTPS فقط |
 
-`{BASE_URL}` منبعتلك ياه أول ما يصير السيرفر جاهز.
+هاد عنوان السيرفر التجريبي، وهو شغّال هلأ. المفتاح منبعتلك ياه لحال.
 
 ## 2. شكل البيانات
 
@@ -90,18 +90,18 @@
 
 فحص المفتاح:
 ```bash
-curl -H "Authorization: Bearer <KEY>" {BASE_URL}/api/v1/alameen/items
+curl -H "Authorization: Bearer <KEY>" https://attrash-pullman.onrender.com/api/v1/alameen/items
 ```
 إرسال صنف واحد:
 ```bash
-curl -X POST {BASE_URL}/api/v1/alameen/items \
+curl -X POST https://attrash-pullman.onrender.com/api/v1/alameen/items \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d "{\"branch_code\":\"01\",\"sync_type\":\"changes\",\"items\":[{\"item_code\":\"1001\",\"name\":\"تجربة\",\"price\":1000}]}"
 ```
 
 ## 6. خطة التجربة الأولى
 
-1. منبعتلكم العنوان ومفتاح فرع بولمان.
+1. منبعتلكم مفتاح فرع بولمان (لحال، مو بهالملف).
 2. تجربة `GET` للتأكد من المفتاح.
 3. `changes` بـ 10 إلى 20 صنف، والمحاسب عندنا بيقارن مع الأمين من صفحة المتابعة.
 4. بعدها `full` لكل أصناف فرع بولمان.
