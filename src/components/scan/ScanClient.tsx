@@ -158,7 +158,7 @@ export function ScanClient({ initialSessionId, userName }: { initialSessionId: s
               {uploading > 0 ? `عم نرفع ${uploading} صورة...` : `عم نفحص ${pending} صورة...`}
             </p>
           )}
-          {workerSlow && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">الصور عم تتأخر. تأكد إنو جهاز الذكاء الصناعي شغّال.</p>}
+          {workerSlow && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">الفحص عم ياخد وقت أكتر من العادة. استنى شوي، وإذا طوّل كتير خبّر الإدارة.</p>}
           {uploadErr && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{uploadErr}</p>}
 
           {status === "review" && unsure.length > 0 && (

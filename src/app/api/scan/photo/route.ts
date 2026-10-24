@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { storeFile } from "@/lib/storage";
+import { wakeAiWorker } from "@/lib/scan-wake";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +27,6 @@ export async function POST(req: Request) {
   const takenAt = Number(fd.get("takenAt"));
   const [photo] = await db.insert(schema.scanPhotos).values({ sessionId, url, takenAt: Number.isFinite(takenAt) && takenAt > 0 ? new Date(takenAt) : null })
     .returning({ id: schema.scanPhotos.id });
+  wakeAiWorker();
   return Response.json({ ok: true, id: photo.id });
 }

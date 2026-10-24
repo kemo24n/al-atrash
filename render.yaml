@@ -24,6 +24,10 @@ services:
         sync: false
       - key: SCAN_WORKER_KEY       # secret shared with the AI worker on the GPU machine (tools/scan_worker.py)
         sync: false
+      - key: SCAN_TRIGGER_URL      # wake-up URL of the cloud GPU worker (printed by: modal deploy tools/modal_scan.py)
+        sync: false
+      - key: SCAN_TRIGGER_KEY
+        sync: false
       - key: SUPABASE_URL          # Supabase → Project Settings → API → Project URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY  # Supabase → Project Settings → API → service_role (secret)
