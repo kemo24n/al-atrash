@@ -73,12 +73,17 @@ async function syncStoreProducts(branchId: string, syncId: string, full: boolean
     cats.set(name, c.id);
   }
 
+  // items sold in several units (قطعة, قطعتين, كرتونة...) show the unit in their name so they don't look like duplicates
+  const multi = new Set((await db.select({ code: a.itemCode }).from(a)
+    .where(and(eq(a.branchId, branchId), eq(a.active, true))).groupBy(a.itemCode).having(sql`count(*) > 1`)).map((r) => r.code));
+  const displayName = (it: { name: string; unit: string; itemCode: string }) => (multi.has(it.itemCode) ? `${it.name} · ${it.unit}` : it.name);
+
   const now = new Date();
   await db.transaction(async (tx) => {
     for (let i = 0; i < items.length; i += CHUNK) {
       const chunk = items.slice(i, i + CHUNK);
       const rows = chunk.map((it) => ({
-        sku: `alm:${it.itemCode}:${it.unit}`, name: it.name, slug: `${slugify(it.name)}-${it.itemCode}`, unit: it.unit,
+        sku: `alm:${it.itemCode}:${it.unit}`, name: displayName(it), slug: `${slugify(it.name)}-${it.itemCode}-${slugify(it.unit)}`, unit: it.unit,
         // an item without a real price (0 in Al-Ameen) is never sold: it stays hidden until Al-Ameen sends a price
         price: it.price, barcode: it.barcode, categoryId: cats.get(it.category ?? "أصناف أخرى")!, active: it.active && it.price > 0,
         stock: it.active && it.price > 0 ? AVAILABLE : 0, availabilitySource: "alameen", availabilityAt: now,
@@ -120,6 +125,11 @@ export async function branchForKey(key: string) {
 export async function ingestPush(branch: schema.Branch, push: z.infer<typeof PushSchema>): Promise<PushResult> {
   const rejected: PushResult["rejected"] = [];
   const rows: (typeof schema.alameenItems.$inferInsert)[] = [];
+  // Item cards in Al-Ameen are priced in dollars or in Syrian pounds. Dollar prices become pounds with the
+  // chain's own internal rate (Admin → الإعدادات, never shown to customers); pounds go through the branch divisor.
+  const usdRate = (await db.query.settings.findFirst({ columns: { usdRate: true } }))?.usdRate ?? 0;
+  const toSyp = (price: number, currency: string) =>
+    /^(USD|\$|دولار)/i.test(currency) ? Math.round(price * usdRate) : Math.round(price / Math.max(branch.priceDivisor, 1));
   const seen = new Set<string>();
   push.items.forEach((raw, index) => {
     const r = ItemSchema.safeParse(raw);
@@ -135,7 +145,7 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
     rows.push({
       branchId: branch.id, itemCode: it.item_code, unit: it.unit, barcode: it.barcode, name: it.name,
       category: it.category, rawPrice: it.price, currency: it.currency,
-      price: Math.round(it.price / Math.max(branch.priceDivisor, 1)),
+      price: toSyp(it.price, it.currency),
       active: it.active, sourceUpdatedAt: it.updated_at ? new Date(it.updated_at) : null,
     });
   });
