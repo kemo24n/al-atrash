@@ -7,14 +7,27 @@ const p = schema.products;
 const cardCols = {
   id: p.id, slug: p.slug, name: p.name, brand: p.brand, unit: p.unit, price: p.price, comparePrice: p.comparePrice,
   stock: p.stock, image: p.image, soldBy: p.soldBy, weightOptions: p.weightOptions, description: p.description, category: { icon: schema.categories.icon },
+  /** All active units of the same item (null for items sold in one unit only). */
+  variants: sql<CardVariant[] | null>`(
+    select case when count(*) > 1 then json_agg(json_build_object('id', v.id, 'slug', v.slug, 'name', v.name, 'unit', v.unit,
+      'price', v.price, 'comparePrice', v.compare_price, 'stock', v.stock, 'image', v.image) order by v.unit_sort, v.price) end
+    from products v where v.group_key = ${p.groupKey} and v.active)`,
 };
+export type CardVariant = { id: string; slug: string; name: string; unit: string; price: number; comparePrice: number | null; stock: number; image: string | null };
 
 /** Single-branch demo: only items that came from Al-Ameen are ever listed. */
 export const alameenOnly = () => (process.env.STORE_BRANCH_CODE ? sql`coalesce(${p.sku}, '') like 'alm:%'` : undefined);
 
+/**
+ * An item sold in several units (قطعة, قطعتين, كرتونة) is several products sharing a group_key.
+ * Lists show one card per item (its first unit) carrying all its units, so the customer picks the unit there.
+ */
+const firstOfGroup = sql`(${p.groupKey} is null or ${p.id} = (
+  select q.id from products q where q.group_key = ${p.groupKey} and q.active order by q.unit_sort, q.price limit 1))`;
+
 function base(where: SQL | undefined) {
   return db.select(cardCols).from(p).innerJoin(schema.categories, eq(p.categoryId, schema.categories.id))
-    .where(and(eq(p.active, true), alameenOnly(), where));
+    .where(and(eq(p.active, true), alameenOnly(), firstOfGroup, where));
 }
 
 export const listFeatured = (limit = 12) => base(eq(p.featured, true)).orderBy(desc(p.soldCount)).limit(limit);

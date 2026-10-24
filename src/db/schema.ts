@@ -56,6 +56,8 @@ export const alameenItems = pgTable("alameen_items", {
   branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   itemCode: text("item_code").notNull(),
   unit: text("unit").default("قطعة").notNull(),
+  /** Position of this unit among the item's units, in the order Al-Ameen sent them. */
+  unitSort: integer("unit_sort").default(0).notNull(),
   barcode: text("barcode"),
   name: text("name").notNull(),
   category: text("category"),
@@ -150,6 +152,10 @@ export const products = pgTable("products", {
   availabilityAt: timestamp("availability_at", { withTimezone: true }),
   /** Last time we looked this barcode up for a photo (so a missing one isn't asked for again every sync). */
   photoCheckedAt: timestamp("photo_checked_at", { withTimezone: true }),
+  /** Units of the same item (قطعة, قطعتين, كرتونة) share a group: the store shows one card with a unit picker. */
+  groupKey: text("group_key"),
+  /** Order of the unit inside its group (Al-Ameen unit 1, 2, 3). The first one is shown on the card. */
+  unitSort: integer("unit_sort").default(0).notNull(),
   soldCount: integer("sold_count").default(0).notNull(),
   categoryId: text("category_id").notNull().references(() => categories.id),
   createdAt: createdAt(),

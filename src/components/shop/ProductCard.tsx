@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Flame } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { Price } from "./Price";
@@ -13,9 +13,19 @@ import { cn, discountPct } from "@/lib/format";
 export type CardProduct = {
   id: string; slug: string; name: string; brand: string | null; unit: string; price: number; comparePrice: number | null;
   stock: number; image: string | null; soldBy: string; weightOptions: string; description?: string | null; category?: { icon: string } | null;
+  /** Other units of the same item (قطعة, قطعتين, كرتونة); null when it is sold in one unit only. */
+  variants?: { id: string; slug: string; name: string; unit: string; price: number; comparePrice: number | null; stock: number; image: string | null }[] | null;
 };
 
-export function ProductCard({ p, tone = "light" }: { p: CardProduct; tone?: "light" | "dark" }) {
+/** "Name · unit" becomes "Name" on a card that already shows the unit buttons. */
+const baseName = (name: string, unit: string) => (name.endsWith(` · ${unit}`) ? name.slice(0, -(unit.length + 3)) : name);
+
+export function ProductCard({ p: item, tone = "light" }: { p: CardProduct; tone?: "light" | "dark" }) {
+  const [vid, setVid] = useState(item.id);
+  const v = item.variants?.find((x) => x.id === vid);
+  // the chosen unit is a real product: price, stock, cart and favourites all follow it
+  const p: CardProduct = v ? { ...item, ...v, image: v.image ?? item.image } : item;
+  const title = item.variants ? baseName(item.name, item.unit) : p.name;
   const pct = discountPct(p.price, p.comparePrice);
   const imgRef = useRef<HTMLDivElement>(null);
   const openSheet = useUi((s) => s.openSheet);
@@ -34,7 +44,7 @@ export function ProductCard({ p, tone = "light" }: { p: CardProduct; tone?: "lig
       )}
     >
       <div ref={imgRef} className="relative aspect-square overflow-hidden rounded-[18px] bg-white">
-        <ProductImage src={p.image} name={p.name} icon={p.category?.icon} className="group-hover:scale-[1.06]" />
+        <ProductImage src={p.image} name={title} icon={p.category?.icon} className="group-hover:scale-[1.06]" />
         {pct > 0 && (
           <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-ink px-2 py-0.5 text-[11px] font-black text-brand-400 shadow">
             -{pct}%
@@ -46,7 +56,19 @@ export function ProductCard({ p, tone = "light" }: { p: CardProduct; tone?: "lig
       </div>
       <div className="flex flex-1 flex-col px-1.5 pb-1 pt-2.5">
         {p.brand && <span className={cn("truncate text-[11px] font-black", dark ? "text-brand-400" : "text-brand-700")}>{p.brand}</span>}
-        <h3 className={cn("line-clamp-2 min-h-[2.5em] text-[13.5px] font-bold leading-snug", dark ? "text-white" : "text-ink")}>{p.name}</h3>
+        <h3 className={cn("line-clamp-2 min-h-[2.5em] text-[13.5px] font-bold leading-snug", dark ? "text-white" : "text-ink")}>{title}</h3>
+        {item.variants && (
+          <div className="mt-1.5 flex flex-wrap gap-1" role="group" aria-label="الوحدة">
+            {item.variants.map((x) => (
+              <button key={x.id} type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setVid(x.id); }}
+                className={cn("rounded-lg px-2 py-0.5 text-[11px] font-black ring-1 transition", x.id === p.id
+                  ? (dark ? "bg-brand-400 text-ink ring-brand-400" : "bg-ink text-brand-400 ring-ink")
+                  : (dark ? "text-white/70 ring-white/20" : "text-ink-soft ring-ink-line hover:ring-ink"))}>
+                {x.unit}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-auto flex items-end justify-between gap-1 pt-1">
           <div className="min-w-0">
             {isWeight ? (

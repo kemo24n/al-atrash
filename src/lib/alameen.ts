@@ -83,7 +83,7 @@ async function syncStoreProducts(branchId: string, syncId: string, full: boolean
     for (let i = 0; i < items.length; i += CHUNK) {
       const chunk = items.slice(i, i + CHUNK);
       const rows = chunk.map((it) => ({
-        sku: `alm:${it.itemCode}:${it.unit}`, name: displayName(it), slug: `${slugify(it.name)}-${it.itemCode}-${slugify(it.unit)}`, unit: it.unit,
+        sku: `alm:${it.itemCode}:${it.unit}`, groupKey: `alm:${it.itemCode}`, unitSort: it.unitSort, name: displayName(it), slug: `${slugify(it.name)}-${it.itemCode}-${slugify(it.unit)}`, unit: it.unit,
         // an item without a real price (0 in Al-Ameen) is never sold: it stays hidden until Al-Ameen sends a price
         price: it.price, barcode: it.barcode, categoryId: cats.get(it.category ?? "أصناف أخرى")!, active: it.active && it.price > 0,
         stock: it.active && it.price > 0 ? AVAILABLE : 0, availabilitySource: "alameen", availabilityAt: now,
@@ -91,7 +91,7 @@ async function syncStoreProducts(branchId: string, syncId: string, full: boolean
       const saved = await tx.insert(p).values(rows).onConflictDoUpdate({
         target: p.sku,
         set: {
-          name: sql`excluded.name`, unit: sql`excluded.unit`, price: sql`excluded.price`, barcode: sql`excluded.barcode`,
+          name: sql`excluded.name`, unit: sql`excluded.unit`, groupKey: sql`excluded.group_key`, unitSort: sql`excluded.unit_sort`, price: sql`excluded.price`, barcode: sql`excluded.barcode`,
           categoryId: sql`excluded.category_id`, active: sql`excluded.active`,
           // the shelf AI owns availability for monitored products; Al-Ameen only switches it off when the item is gone
           stock: sql`case when ${p.aiMonitored} and excluded.active then ${p.stock} else excluded.stock end`,
@@ -131,6 +131,7 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
   const toSyp = (price: number, currency: string) =>
     /^(USD|\$|دولار)/i.test(currency) ? Math.round(price * usdRate) : Math.round(price / Math.max(branch.priceDivisor, 1));
   const seen = new Set<string>();
+  const unitCount = new Map<string, number>();
   push.items.forEach((raw, index) => {
     const r = ItemSchema.safeParse(raw);
     if (!r.success) {
@@ -142,13 +143,18 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
     const key = `${it.item_code}\u0000${it.unit}`;
     if (seen.has(key)) return; // same item and unit twice in one push: keep the first
     seen.add(key);
+    const unitSort = unitCount.get(it.item_code) ?? 0;
+    unitCount.set(it.item_code, unitSort + 1);
     rows.push({
-      branchId: branch.id, itemCode: it.item_code, unit: it.unit, barcode: it.barcode, name: it.name,
+      branchId: branch.id, itemCode: it.item_code, unit: it.unit, unitSort, barcode: it.barcode, name: it.name,
       category: it.category, rawPrice: it.price, currency: it.currency,
       price: toSyp(it.price, it.currency),
       active: it.active, sourceUpdatedAt: it.updated_at ? new Date(it.updated_at) : null,
     });
   });
+
+  // a push that holds only one unit of an item (a "changes" push) says nothing about unit order: keep the saved one
+  for (const r of rows) if ((unitCount.get(r.itemCode) ?? 0) < 2) r.unitSort = -1;
 
   let inserted = 0, updated = 0, deactivated = 0;
   const [sync] = await db.insert(schema.alameenSyncs).values({
@@ -164,7 +170,7 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
           .onConflictDoUpdate({
             target: [schema.alameenItems.branchId, schema.alameenItems.itemCode, schema.alameenItems.unit],
             set: {
-              barcode: sql`excluded.barcode`, name: sql`excluded.name`, category: sql`excluded.category`,
+              barcode: sql`excluded.barcode`, name: sql`excluded.name`, unitSort: sql`case when excluded.unit_sort < 0 then ${schema.alameenItems.unitSort} else excluded.unit_sort end`, category: sql`excluded.category`,
               rawPrice: sql`excluded.raw_price`, currency: sql`excluded.currency`, price: sql`excluded.price`,
               active: sql`excluded.active`, sourceUpdatedAt: sql`excluded.source_updated_at`,
               lastSyncId: sql`excluded.last_sync_id`, updatedAt: sql`now()`,
