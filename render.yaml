@@ -22,6 +22,8 @@ services:
         sync: false
       - key: STORE_BRANCH_CODE     # Al-Ameen code of the branch the demo store sells (Pullman)
         sync: false
+      - key: SCAN_WORKER_KEY       # secret shared with the AI worker on the GPU machine (tools/scan_worker.py)
+        sync: false
       - key: SUPABASE_URL          # Supabase → Project Settings → API → Project URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY  # Supabase → Project Settings → API → service_role (secret)

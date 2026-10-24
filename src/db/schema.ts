@@ -78,6 +78,51 @@ export const alameenItems = pgTable("alameen_items", {
   index("alameen_items_barcode_idx").on(t.barcode),
 ]);
 
+/** One shelf scan: an employee photographs the monitored shelves at the start of a shift. */
+export const scanSessions = pgTable("scan_sessions", {
+  id: id(),
+  branchId: text("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  /** open: taking photos · review: ended, employee confirms unsure items · applied: store updated · cancelled */
+  status: text("status").default("open").notNull(),
+  startedAt: createdAt(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  /** After apply: how many monitored products became available / not available. */
+  available: integer("available"),
+  unavailable: integer("unavailable"),
+});
+
+/** A shelf photo of a scan, analysed by the AI worker on the GPU machine. */
+export const scanPhotos = pgTable("scan_photos", {
+  id: id(),
+  sessionId: text("session_id").notNull().references(() => scanSessions.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  /** pending → processing (a worker took it) → done | error */
+  status: text("status").default("pending").notNull(),
+  error: text("error"),
+  takenAt: timestamp("taken_at", { withTimezone: true }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("scan_photos_status_idx").on(t.status, t.createdAt)]);
+
+/** What the AI saw in one photo: one row per AI item, with its best confidence and how many times it was found. */
+export const scanHits = pgTable("scan_hits", {
+  id: id(),
+  sessionId: text("session_id").notNull().references(() => scanSessions.id, { onDelete: "cascade" }),
+  photoId: text("photo_id").notNull().references(() => scanPhotos.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  confidence: doublePrecision("confidence").notNull(),
+  count: integer("count").default(1).notNull(),
+}, (t) => [index("scan_hits_session_idx").on(t.sessionId)]);
+
+/** The employee's answer for a product the AI was unsure about (or a manual correction). */
+export const scanConfirms = pgTable("scan_confirms", {
+  sessionId: text("session_id").notNull().references(() => scanSessions.id, { onDelete: "cascade" }),
+  productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  present: boolean("present").notNull(),
+}, (t) => [primaryKey({ columns: [t.sessionId, t.productId] })]);
+
 /** Every push from Al-Ameen, so the accountant can compare and we can see what went wrong. */
 export const alameenSyncs = pgTable("alameen_syncs", {
   id: id(),

@@ -1,4 +1,5 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { db, schema } from "@/db";
 import { PageHead, Panel } from "@/components/admin/Page";
@@ -15,9 +16,27 @@ export default async function AiPage() {
   const rows = await db.select({ id: p.id, name: p.name, unit: p.unit, price: p.price, stock: p.stock, aiLabel: p.aiLabel,
     source: p.availabilitySource, at: p.availabilityAt })
     .from(p).where(eq(p.aiMonitored, true)).orderBy(asc(p.name));
+  const ss = schema.scanSessions;
+  const sessions = await db.select({ id: ss.id, status: ss.status, startedAt: ss.startedAt, appliedAt: ss.appliedAt, available: ss.available,
+    unavailable: ss.unavailable, by: schema.users.name,
+    photos: sql<number>`(select count(*)::int from scan_photos ph where ph.session_id = ${ss.id})` })
+    .from(ss).leftJoin(schema.users, eq(ss.userId, schema.users.id)).orderBy(desc(ss.startedAt)).limit(20);
+  const STATUS: Record<string, string> = { open: "عم يصوّر", review: "عم يأكّد", applied: "انطبق عالمتجر", cancelled: "ملغاة" };
   return (
     <div>
       <PageHead title="الماسح الذكي" sub="الأصناف اللي بيراقبها الذكاء الصناعي على الرف. توفّرها بيجي من مسح الموظف، والباقي بيمشي حسب الأمين." />
+      <Panel title="آخر عمليات المسح" className="mb-6" actions={<Link href="/scan" className="btn-primary btn-sm h-10">فتح صفحة المسح</Link>}>
+        {sessions.length === 0 ? <p className="text-sm text-ink-mute">لسا ما صار ولا مسح. الموظف بيفتح <code>/scan</code> من موبايله ببداية الوردية.</p> : (
+          <div className="overflow-x-auto"><table className="w-full text-sm">
+            <thead><tr className="text-right text-xs text-ink-mute"><th className="p-2">البداية</th><th className="p-2">الموظف</th><th className="p-2">صور</th><th className="p-2">الحالة</th><th className="p-2">متوفر</th><th className="p-2">مو متوفر</th></tr></thead>
+            <tbody>{sessions.map((x) => (
+              <tr key={x.id} className="border-t border-ink-line"><td className="p-2 tabular">{dateAr(x.startedAt)}</td><td className="p-2">{x.by ?? "-"}</td>
+                <td className="p-2 tabular">{x.photos}</td><td className="p-2 text-xs font-bold">{STATUS[x.status] ?? x.status}</td>
+                <td className="p-2 tabular text-emerald-700">{x.available ?? "-"}</td><td className="p-2 tabular text-red-700">{x.unavailable ?? "-"}</td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </Panel>
       <Panel title="ملف الربط" className="mb-6">
         <p className="mb-3 text-sm text-ink-mute">ملف CSV فيه عمودين: <code>sku</code> (رمز الصنف بالمتجر) و <code>ai_label</code> (اسم الصنف عند الذكاء الصناعي). الصنف الواحد ممكن ينربط بأكتر من اسم (سطر لكل اسم)، وبيصير متوفر إذا الماسح شاف أي واحد منهن. كل رفع بيستبدل الربط القديم كله.</p>
         <AiMapForm />

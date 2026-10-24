@@ -12,8 +12,9 @@ export async function middleware(req: NextRequest) {
   };
   if (pathname.startsWith("/admin") && !(s && (s.role === "ADMIN" || s.role === "STAFF"))) return deny("/staff-login");
   if (pathname.startsWith("/driver") && !(s && (s.role === "DRIVER" || s.role === "ADMIN"))) return deny("/staff-login");
+  if (pathname.startsWith("/scan") && !(s && (s.role === "ADMIN" || s.role === "STAFF"))) return deny("/staff-login");
   if (pathname.startsWith("/account") && !s) return deny("/login");
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/admin/:path*", "/driver/:path*", "/account/:path*"] };
+export const config = { matcher: ["/admin/:path*", "/driver/:path*", "/account/:path*", "/scan/:path*", "/scan"] };
