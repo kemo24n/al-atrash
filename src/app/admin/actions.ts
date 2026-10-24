@@ -77,6 +77,14 @@ const ProductSchema = z.object({
 const fromAlameen = () => !!process.env.STORE_BRANCH_CODE;
 const ALAMEEN_ONLY_MSG = "الأصناف بتجي من الأمين بس. أي صنف جديد لازم ينضاف بالأمين وبيوصل لحاله.";
 
+/** Looks up photos by barcode for every product that has none (runs in the background). */
+export async function findPhotosAction() {
+  await guard(["ADMIN"]);
+  const { startPhotoSearch } = await import("@/lib/photos");
+  const started = startPhotoSearch();
+  redirect(`/admin/products?photos=${started ? "started" : "running"}`);
+}
+
 export async function saveProductAction(_: FormState, fd: FormData): Promise<FormState> {
   await guard();
   const id = str(fd.get("id"));

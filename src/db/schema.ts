@@ -148,6 +148,8 @@ export const products = pgTable("products", {
   /** Who set the current availability: alameen (item is active there) | ai (shelf scan) | manual (staff). */
   availabilitySource: text("availability_source").default("manual").notNull(),
   availabilityAt: timestamp("availability_at", { withTimezone: true }),
+  /** Last time we looked this barcode up for a photo (so a missing one isn't asked for again every sync). */
+  photoCheckedAt: timestamp("photo_checked_at", { withTimezone: true }),
   soldCount: integer("sold_count").default(0).notNull(),
   categoryId: text("category_id").notNull().references(() => categories.id),
   createdAt: createdAt(),

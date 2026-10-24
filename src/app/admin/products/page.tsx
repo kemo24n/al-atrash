@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { and, asc, desc, eq, ilike, lte, or } from "drizzle-orm";
-import { Download, Pencil, Plus, Search, Upload } from "lucide-react";
+import { Download, Image as ImageIcon, Pencil, Plus, Search, Upload } from "lucide-react";
 import { db, schema } from "@/db";
 import { PageHead } from "@/components/admin/Page";
 import { InlineNumber, InlineToggle } from "@/components/admin/ProductRowEdit";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { cn } from "@/lib/format";
 import { alameenOnly } from "@/lib/catalog";
+import { photoStats, photosRunning } from "@/lib/photos";
+import { findPhotosAction } from "@/app/admin/actions";
 
 export const metadata = { title: "المنتجات" };
 
-export default async function Products({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string; f?: string; saved?: string }> }) {
+export default async function Products({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string; f?: string; saved?: string; photos?: string }> }) {
   const sp = await searchParams;
   const p = schema.products;
   const q = (sp.q ?? "").trim();
@@ -21,9 +23,10 @@ export default async function Products({ searchParams }: { searchParams: Promise
     sp.cat ? eq(p.categoryId, sp.cat) : undefined,
     sp.f === "low" ? or(and(eq(p.soldBy, "unit"), lte(p.stock, 10)), and(eq(p.soldBy, "weight"), lte(p.stock, 3000))) : sp.f === "hidden" ? eq(p.active, false) : sp.f === "featured" ? eq(p.featured, true) : sp.f === "all" ? undefined : eq(p.active, true),
   );
-  const [rows, cats] = await Promise.all([
+  const [rows, cats, photos] = await Promise.all([
     db.query.products.findMany({ where, orderBy: [asc(p.categoryId), desc(p.featured), asc(p.name)], limit: 500, with: { category: { columns: { name: true, icon: true } } } }),
     db.select().from(schema.categories).orderBy(asc(schema.categories.sort)),
+    photoStats(),
   ]);
   const catOrder = new Map(cats.map((c, i) => [c.id, i]));
   rows.sort((a, b) => (catOrder.get(a.categoryId) ?? 99) - (catOrder.get(b.categoryId) ?? 99) || Number(b.featured) - Number(a.featured) || a.name.localeCompare(b.name, "ar"));
@@ -37,7 +40,14 @@ export default async function Products({ searchParams }: { searchParams: Promise
           <a href="/admin/products/export" className="btn-ghost btn-sm h-11"><Download className="h-4 w-4" /> تصدير CSV</a>
           {!fromAlameen && <Link href="/admin/products/import" className="btn-ghost btn-sm h-11"><Upload className="h-4 w-4" /> استيراد من Excel</Link>}
           {!fromAlameen && <Link href="/admin/products/new" className="btn-primary btn-sm h-11"><Plus className="h-4 w-4" /> منتج جديد</Link>}
+          <form action={findPhotosAction}><button className="btn-primary btn-sm h-11"><ImageIcon className="h-4 w-4" /> جيب الصور تلقائياً</button></form>
         </>} />
+      {(sp.photos || photos.withPhoto < photos.total) && (
+        <p className="mb-4 rounded-xl bg-paper px-4 py-3 text-sm font-bold text-ink-soft">
+          {sp.photos === "started" ? "بلّشنا ندوّر على الصور بالباركود، بتاخد كم دقيقة. حدّث الصفحة بعد شوي. " : sp.photos === "running" || photosRunning() ? "عم ندوّر على الصور هلأ. حدّث الصفحة بعد شوي. " : ""}
+          {photos.withPhoto} من {photos.total} صنف عندهن صورة{photos.noBarcode ? ` · ${photos.noBarcode} بدون باركود (بدهن صورة يدوي)` : ""}
+        </p>
+      )}
       {sp.saved && <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">✓ تم حفظ المنتج</p>}
       <div className="mb-4 flex flex-wrap gap-2">
         <form className="relative min-w-[220px] flex-1" action="/admin/products">

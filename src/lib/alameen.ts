@@ -4,6 +4,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { slugify } from "@/lib/format";
+import { startPhotoSearch } from "@/lib/photos";
 
 // Al-Ameen pushes items and prices to us; we never write back to it.
 // Spec agreed with Al-Ameen's developer: POST /api/v1/alameen/items, one key per branch,
@@ -78,8 +79,9 @@ async function syncStoreProducts(branchId: string, syncId: string, full: boolean
       const chunk = items.slice(i, i + CHUNK);
       const rows = chunk.map((it) => ({
         sku: `alm:${it.itemCode}:${it.unit}`, name: it.name, slug: `${slugify(it.name)}-${it.itemCode}`, unit: it.unit,
-        price: it.price, barcode: it.barcode, categoryId: cats.get(it.category ?? "أصناف أخرى")!, active: it.active,
-        stock: it.active ? AVAILABLE : 0, availabilitySource: "alameen", availabilityAt: now,
+        // an item without a real price (0 in Al-Ameen) is never sold: it stays hidden until Al-Ameen sends a price
+        price: it.price, barcode: it.barcode, categoryId: cats.get(it.category ?? "أصناف أخرى")!, active: it.active && it.price > 0,
+        stock: it.active && it.price > 0 ? AVAILABLE : 0, availabilitySource: "alameen", availabilityAt: now,
       }));
       const saved = await tx.insert(p).values(rows).onConflictDoUpdate({
         target: p.sku,
@@ -91,13 +93,15 @@ async function syncStoreProducts(branchId: string, syncId: string, full: boolean
           availabilitySource: sql`case when ${p.aiMonitored} and excluded.active then ${p.availabilitySource} else excluded.availability_source end`,
           availabilityAt: sql`case when ${p.aiMonitored} and excluded.active then ${p.availabilityAt} else excluded.availability_at end`,
         },
-      }).returning({ id: p.id, sku: p.sku });
-      const bySku = new Map(saved.map((s) => [s.sku, s.id]));
-      for (const it of chunk) {
-        const productId = bySku.get(`alm:${it.itemCode}:${it.unit}`);
-        if (productId && productId !== it.productId) await tx.update(a).set({ productId }).where(eq(a.id, it.id));
-      }
+      });
     }
+    // link every Al-Ameen row to its product in ONE statement (one-by-one updates take minutes on a far database)
+    await tx.execute(sql`
+      update ${a} set product_id = ${p.id}
+      from ${p}
+      where ${a.branchId} = ${branchId}
+        and ${p.sku} = 'alm:' || ${a.itemCode} || ':' || ${a.unit}
+        and ${a.productId} is distinct from ${p.id}`);
     if (full) await tx.update(p).set({ active: false }).where(sql`coalesce(${p.sku}, '') not like 'alm:%'`);
   });
 }
@@ -177,6 +181,7 @@ export async function ingestPush(branch: schema.Branch, push: z.infer<typeof Pus
 
   if (branch.alameenCode && branch.alameenCode === process.env.STORE_BRANCH_CODE) {
     await syncStoreProducts(branch.id, sync.id, push.sync_type === "full");
+    startPhotoSearch(); // new items get a photo by barcode in the background
   }
 
   await db.update(schema.alameenSyncs).set({
