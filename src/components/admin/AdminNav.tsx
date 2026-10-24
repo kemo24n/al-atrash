@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Boxes, ClipboardList, ExternalLink, Image as ImageIcon, LayoutGrid, LogOut, Map, Menu, RefreshCw, Settings, Store, Ticket, Users, UserCog, X } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, ExternalLink, Image as ImageIcon, LayoutGrid, LogOut, Map, Menu, RefreshCw, ScanLine, Settings, Store, Ticket, Users, UserCog, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/format";
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/coupons", label: "أكواد الخصم", Icon: Ticket, admin: true },
   { href: "/admin/branches", label: "الفروع", Icon: Store, admin: true },
   { href: "/admin/alameen", label: "الأمين", Icon: RefreshCw, admin: true },
+  { href: "/admin/ai", label: "الماسح الذكي", Icon: ScanLine, admin: true },
   { href: "/admin/zones", label: "مناطق التوصيل", Icon: Map, admin: true },
   { href: "/admin/customers", label: "الزبائن", Icon: Users, admin: true },
   { href: "/admin/team", label: "الفريق والسائقين", Icon: UserCog, admin: true },

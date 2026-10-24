@@ -152,6 +152,8 @@ export const products = pgTable("products", {
   availabilityAt: timestamp("availability_at", { withTimezone: true }),
   /** Last time we looked this barcode up for a photo (so a missing one isn't asked for again every sync). */
   photoCheckedAt: timestamp("photo_checked_at", { withTimezone: true }),
+  /** Name of the shelf-AI class that recognizes this product (set from Admin → الماسح الذكي). */
+  aiLabel: text("ai_label"),
   /** Units of the same item (قطعة, قطعتين, كرتونة) share a group: the store shows one card with a unit picker. */
   groupKey: text("group_key"),
   /** Order of the unit inside its group (Al-Ameen unit 1, 2, 3). The first one is shown on the card. */
