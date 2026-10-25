@@ -374,3 +374,25 @@ export async function updateWeighedLineAction(orderId: string, itemId: string, l
   });
   revalidatePath("/admin", "layout");
 }
+
+/** Sets product photos from a CSV (sku,image). Only the photo changes, so it is allowed for Al-Ameen items too. */
+export async function importPhotosAction(_: FormState, fd: FormData): Promise<FormState> {
+  await guard(["ADMIN"]);
+  const file = fd.get("file") as File | null;
+  if (!file || file.size === 0) return { error: "اختار ملف الصور (CSV)" };
+  const { data } = Papa.parse<Record<string, string>>((await file.text()).replace(/^﻿/, ""), { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim().toLowerCase() });
+  const rows = data.map((r) => ({ sku: (r.sku ?? "").trim(), image: (r.image ?? "").trim() })).filter((r) => r.sku && /^(https?:\/\/|\/)/.test(r.image));
+  if (!rows.length) return { error: "الملف لازم يكون فيه عمودين: sku و image" };
+  let n = 0;
+  for (let i = 0; i < rows.length; i += 200) {
+    await db.transaction(async (tx) => {
+      for (const r of rows.slice(i, i + 200)) {
+        const res = await tx.update(schema.products).set({ image: r.image }).where(eq(schema.products.sku, r.sku)).returning({ id: schema.products.id });
+        n += res.length;
+      }
+    });
+  }
+  await db.execute(sql`update categories c set image = (select p.image from products p where p.category_id = c.id and p.image is not null and p.active order by p.sold_count desc limit 1) where c.image is null`);
+  revalidatePath("/", "layout");
+  return { ok: true, message: `انحطّت صورة لـ ${n} صنف` };
+}

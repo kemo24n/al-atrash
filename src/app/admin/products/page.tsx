@@ -9,6 +9,7 @@ import { cn } from "@/lib/format";
 import { alameenOnly } from "@/lib/catalog";
 import { photoStats, photosRunning } from "@/lib/photos";
 import { findPhotosAction } from "@/app/admin/actions";
+import { PhotosForm } from "@/components/admin/PhotosForm";
 
 export const metadata = { title: "المنتجات" };
 
@@ -42,6 +43,7 @@ export default async function Products({ searchParams }: { searchParams: Promise
           {!fromAlameen && <Link href="/admin/products/new" className="btn-primary btn-sm h-11"><Plus className="h-4 w-4" /> منتج جديد</Link>}
           <form action={findPhotosAction}><button className="btn-primary btn-sm h-11"><ImageIcon className="h-4 w-4" /> جيب الصور تلقائياً</button></form>
         </>} />
+      <div className="card mb-4 p-4"><PhotosForm /></div>
       {(sp.photos || photos.withPhoto < photos.total) && (
         <p className="mb-4 rounded-xl bg-paper px-4 py-3 text-sm font-bold text-ink-soft">
           {sp.photos === "started" ? "بلّشنا ندوّر على الصور بالباركود، بتاخد كم دقيقة. حدّث الصفحة بعد شوي. " : sp.photos === "running" || photosRunning() ? "عم ندوّر على الصور هلأ. حدّث الصفحة بعد شوي. " : ""}
