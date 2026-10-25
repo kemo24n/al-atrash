@@ -11,23 +11,26 @@ const cardCols = {
   variants: sql<CardVariant[] | null>`(
     select case when count(*) > 1 then json_agg(json_build_object('id', v.id, 'slug', v.slug, 'name', v.name, 'unit', v.unit,
       'price', v.price, 'comparePrice', v.compare_price, 'stock', v.stock, 'image', v.image) order by v.unit_sort, v.price) end
-    from products v where v.group_key = ${p.groupKey} and v.active)`,
+    from products v where v.group_key = ${p.groupKey} and v.active and v.price > 0)`,
 };
 export type CardVariant = { id: string; slug: string; name: string; unit: string; price: number; comparePrice: number | null; stock: number; image: string | null };
 
 /** Single-branch demo: only items that came from Al-Ameen are ever listed. */
 export const alameenOnly = () => (process.env.STORE_BRANCH_CODE ? sql`coalesce(${p.sku}, '') like 'alm:%'` : undefined);
 
+/** What customers may see and buy: Al-Ameen items (in the demo) with a real price. Price 0 is never sold. */
+export const sellable = () => and(alameenOnly(), sql`${p.price} > 0`);
+
 /**
  * An item sold in several units (قطعة, قطعتين, كرتونة) is several products sharing a group_key.
  * Lists show one card per item (its first unit) carrying all its units, so the customer picks the unit there.
  */
 const firstOfGroup = sql`(${p.groupKey} is null or ${p.id} = (
-  select q.id from products q where q.group_key = ${p.groupKey} and q.active order by q.unit_sort, q.price limit 1))`;
+  select q.id from products q where q.group_key = ${p.groupKey} and q.active and q.price > 0 order by q.unit_sort, q.price limit 1))`;
 
 function base(where: SQL | undefined) {
   return db.select(cardCols).from(p).innerJoin(schema.categories, eq(p.categoryId, schema.categories.id))
-    .where(and(eq(p.active, true), alameenOnly(), firstOfGroup, where));
+    .where(and(eq(p.active, true), sellable(), firstOfGroup, where));
 }
 
 export const listFeatured = (limit = 12) => base(eq(p.featured, true)).orderBy(desc(p.soldCount)).limit(limit);
@@ -93,7 +96,7 @@ export async function listBuyAgain(userId: string, limit = 12) {
 export async function listFavorites(userId: string) {
   return db.select(cardCols).from(p).innerJoin(schema.categories, eq(p.categoryId, schema.categories.id))
     .innerJoin(schema.favorites, and(eq(schema.favorites.productId, p.id), eq(schema.favorites.userId, userId)))
-    .where(and(eq(p.active, true), alameenOnly())).orderBy(desc(schema.favorites.createdAt));
+    .where(and(eq(p.active, true), sellable())).orderBy(desc(schema.favorites.createdAt));
 }
 
 export const listFresh = (limit = 12) =>

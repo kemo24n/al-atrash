@@ -1,7 +1,7 @@
 "use server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { alameenOnly } from "@/lib/catalog";
+import { sellable } from "@/lib/catalog";
 import { getSession } from "@/lib/auth";
 import { checkOrderToken } from "@/lib/token";
 import type { CartItem } from "@/store/cart";
@@ -14,7 +14,7 @@ export async function reorderAction(code: string, token?: string): Promise<{ ite
   if (!o) return { items: [], missing: 0 };
   if (!(checkOrderToken(code, token) || (s && s.uid === o.userId))) return { items: [], missing: 0 };
   const ids = o.items.map((i) => i.productId).filter((x): x is string => !!x);
-  const prods = ids.length ? await db.query.products.findMany({ where: and(inArray(schema.products.id, ids), eq(schema.products.active, true), alameenOnly()), with: { category: { columns: { icon: true } } } }) : [];
+  const prods = ids.length ? await db.query.products.findMany({ where: and(inArray(schema.products.id, ids), eq(schema.products.active, true), sellable()), with: { category: { columns: { icon: true } } } }) : [];
   let missing = 0;
   const items = o.items.flatMap((it): CartItem[] => {
     const p = prods.find((x) => x.id === it.productId);
