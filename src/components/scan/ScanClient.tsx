@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Camera, Check, CircleHelp, Loader2, ScanLine, X } from "lucide-react";
+import { Camera, Check, CircleHelp, Images, Loader2, ScanLine, X } from "lucide-react";
 import { applyScanAction, cancelScanAction, confirmScanAction, endScanAction, startScanAction } from "@/app/scan/actions";
 import { cn } from "@/lib/format";
 
@@ -34,6 +34,7 @@ export function ScanClient({ initialSessionId, userName }: { initialSessionId: s
   const [result, setResult] = useState<{ available: number; unavailable: number } | null>(null);
   const [waitingSince, setWaitingSince] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const gallery = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
     if (!sessionId) return;
@@ -78,6 +79,7 @@ export function ScanClient({ initialSessionId, userName }: { initialSessionId: s
       }
     }
     if (input.current) input.current.value = "";
+    if (gallery.current) gallery.current.value = "";
     refresh();
   }
 
@@ -198,7 +200,11 @@ export function ScanClient({ initialSessionId, userName }: { initialSessionId: s
           {status === "open" ? (
             <>
               <input ref={input} type="file" accept="image/*" capture="environment" multiple hidden onChange={(e) => upload(e.target.files)} />
-              <button onClick={() => input.current?.click()} className="btn-primary h-14 w-full text-lg"><Camera className="h-6 w-6" /> صوّر الرف</button>
+              <input ref={gallery} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
+              <div className="flex gap-2">
+                <button onClick={() => input.current?.click()} className="btn-primary h-14 flex-[3] text-lg"><Camera className="h-6 w-6" /> صوّر الرف</button>
+                <button onClick={() => gallery.current?.click()} className="btn-ghost h-14 flex-[2] text-base"><Images className="h-5 w-5" /> من الاستوديو</button>
+              </div>
               <button onClick={end} disabled={busy || (sum?.photos.total ?? 0) === 0} className="btn-ghost h-11 w-full">إنهاء الوردية</button>
             </>
           ) : (
